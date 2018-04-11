@@ -30,7 +30,6 @@ pacman::p_load(dplyr, ggplot2, mapproj, readr, ggthemes, viridis, tidyr, reshape
 ** Filtering the petroleum data:**
 
 ```{r}
-setwd("/Users/hetvidave/Documents/GitHub/toxicEnvt/data/")
 TRI <- read_csv('TRI_2016_TX.csv') %>%
   dplyr::select(LATITUDE,LONGITUDE, INDUSTRY_SECTOR)%>%
   filter(INDUSTRY_SECTOR == "Petroleum")
