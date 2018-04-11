@@ -1,6 +1,6 @@
 ---
 title: "Environmental Data Project"
-author: "Hetvi Dave"
+author: "Hetvi Dave, Nakul Nair, Vikas Vicraman"
 date: "4/10/2018"
 output: html_document
 ---
@@ -30,10 +30,13 @@ pacman::p_load(dplyr, ggplot2, mapproj, readr, ggthemes, viridis, tidyr, reshape
 ** Filtering the petroleum data:**
 
 ```{r}
+setwd("/Users/hetvidave/Documents/GitHub/toxicEnvt/data/")
 TRI <- read_csv('TRI_2016_TX.csv') %>%
-  dplyr::select(lat,long, INDUSTRY_SECTOR)%>%
+  dplyr::select(LATITUDE,LONGITUDE, INDUSTRY_SECTOR)%>%
   filter(INDUSTRY_SECTOR == "Petroleum")
-TRI
+colnames(TRI)[colnames(TRI)=="LONGITUDE"] <- "long"
+colnames(TRI)[colnames(TRI)=="LATITUDE"] <- "lat"
+
 ```
 
 **Texas Map:**
