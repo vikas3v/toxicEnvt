@@ -1,0 +1,70 @@
+---
+title: "Environmental Data Project"
+author: "Hetvi Dave"
+date: "4/10/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+ ```{r knitr_init, echo=FALSE, cache=FALSE}
+# DO NOT edit this block
+knitr::opts_chunk$set(
+  cache=TRUE,
+  comment=NA,
+  message=FALSE,
+  warning=FALSE,
+  fig.width=12,
+  fig.height=7
+)
+```
+
+```{r}
+if(!require(pacman)) install.packages('pacman')
+pacman::p_load(dplyr, ggplot2, mapproj, readr, ggthemes, viridis, tidyr, reshape2,maps, mapdata, ggmap, stringr)
+```
+
+
+** Filtering the petroleum data:**
+
+```{r}
+TRI <- read_csv('TRI_2016_TX.csv') %>%
+  dplyr::select(lat,long, INDUSTRY_SECTOR)%>%
+  filter(INDUSTRY_SECTOR == "Petroleum")
+TRI
+```
+
+**Texas Map:**
+
+```{r}
+states <- map_data("state") 
+texas <- subset(states, region %in% c("texas"))
+
+texas_map <- ggplot(data = texas) + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "palegreen", color = "black") + 
+  coord_fixed(1.3)
+texas_map
+```
+
+**Counties in texas:**
+```{r}
+tx_df <- subset(states, region == "texas") 
+counties <- map_data("county")
+tx_county <- subset(counties, region == "texas")
+tx_base <- ggplot(data = tx_df, mapping = aes(x = long, y = lat, group= group)) + 
+  coord_fixed(1.3) + 
+  geom_polygon(color = "black", fill = "gray")
+tx_base +geom_polygon(data = tx_county, fill = NA, color = "white") + 
+  geom_polygon(color = "black", fill = NA)
+```
+
+**PLotting petroleum data in the map:**
+```{r}
+texas_map+ geom_point(aes(x=long, y = lat, alpha=0.1) , data = TRI) + 
+  scale_size_continuous(range=c(0.1, 1))+ 
+  scale_color_viridis(option = 'magma') 
+
+
+```
