@@ -29,14 +29,14 @@ pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshap
 
 # Data Exploration
 
-##Q1.1 
+##Reading in and combining all the data files
 ```{r read, message=FALSE}
 # get the names of the csv files in your current directory
 file_names = list.files(pattern = "[.]csv$")  
 
 # for every name you found go and read the csv with that name 
 # (this creates a list of files)
-import_files = lapply(file_names, read.csv)
+import_files = lapply(file_names, read.csv, stringsAsFactors = FALSE)
 
 # append those files one after the other (collapse list elements to one dataset) and save it as d
 df = do.call(rbind, import_files)
@@ -59,6 +59,9 @@ names(dat)[1:7] <- tolower(names(dat)[1:7])
 head(dat)
 ```
 
+```{r}
+
+```
 
 
 
