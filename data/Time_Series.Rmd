@@ -31,10 +31,9 @@ pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshap
 
 ##Q1.1 
 ```{r read, message=FALSE}
-setwd("/Users/Nakul/Documents/Columbia /S2/Env Data Analysis/Final Project/toxicEnvt/data/")
 filenames <- list.files(full.names=TRUE)
 all <- lapply(filenames,function(i){
-read.csv(i, header=FALSE, skip=4)
+read.csv(i, header=FALSE)
 })
 ```
 
