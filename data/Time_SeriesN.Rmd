@@ -1,0 +1,70 @@
+---
+title: "Term Project"
+author: "Vikas Vicraman, Hetvi Dave, Nakul Nair"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::html_docco:
+    highlight: kate
+    toc: true
+    toc_depth: 3
+---
+
+```{r knitr_init, echo=FALSE, cache=FALSE}
+# DO NOT edit this block
+knitr::opts_chunk$set(
+  cache=TRUE,
+  comment=NA,
+  message=FALSE,
+  warning=FALSE,
+  fig.width=12,
+  fig.height=7
+)
+```
+
+#Load in packages
+```{r packages, message=FALSE}
+if(!require(pacman)) install.packages('pacman')
+pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table)
+```
+
+# Data Exploration
+
+##Q1.1 
+```{r read, message=FALSE}
+# get the names of the csv files in your current directory
+file_names = list.files(pattern = "[.]csv$")  
+
+# for every name you found go and read the csv with that name 
+# (this creates a list of files)
+import_files = lapply(file_names, read.csv)
+
+# append those files one after the other (collapse list elements to one dataset) and save it as d
+df = do.call(rbind, import_files)
+
+```
+
+```{r}
+head(df)
+```
+
+
+```{r}
+dat <- df %>%
+  select("LATITUDE","LONGITUDE", "INDUSTRY_SECTOR", "CHEMICAL", "CARCINOGEN", "ON.SITE_RELEASE_TOTAL", "OFF.SITE_RECOVERY_TOTAL") %>%
+  filter(INDUSTRY_SECTOR == "Petroleum")
+
+colnames(dat)[colnames(dat)=="LONGITUDE"] <- "long"
+colnames(dat)[colnames(dat)=="LATITUDE"] <- "lat"
+names(dat)[1:7] <- tolower(names(dat)[1:7])
+head(dat)
+```
+
+
+
+
+
+
+
+
+
+
