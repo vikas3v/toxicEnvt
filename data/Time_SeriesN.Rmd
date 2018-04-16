@@ -64,7 +64,6 @@ head(dat)
 Change in total chemical release by time
 Change in amount of individual chemical releases by time
 Change in chemical release type by time
-Increase in shale gas output by time
 
 ## Plotting the total release of all chemicals over time
 ```{r}
@@ -84,9 +83,29 @@ ggplot(total_release_time, aes(x = year, y = release_sum)) +
 Analysis: Major outlier is financial crisis
 Figure out when exactly shale gas revolution occurs
 Why was it decreasing before the financial crisis
-How much of the post 2009 increase is from returning to normal business and 
+How much of the post 2009 increase is from returning to normal business and how much of it was a genuine increase in petroleum activity.
+
 
 ```{r}
+total_release_time <- dat %>%
+  select("year", "total_releases", "unit_of_measure") %>%
+  filter(unit_of_measure == "Grams") %>%    #dioxins measured in grams, excluding these
+  group_by(year) %>%
+  summarise(release_sum = sum(total_releases))
+
+
+```
+
+
+## Plotting total release amount release type
+```{r}
+total_release_time2 <- dat %>%
+  select("year", "total_releases", "unit_of_measure") %>%
+  filter(unit_of_measure == "Grams") %>%    #dioxins measured in grams, excluding these
+  group_by(year) %>%
+  summarise(release_sum2 = sum(total_releases))
+ggplot(total_release_time2, aes(x = year, y = release_sum2)) +
+  geom_line()
 
 ```
 
