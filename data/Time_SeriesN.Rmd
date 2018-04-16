@@ -110,6 +110,37 @@ ggplot(total_release_time2, aes(x = year, y = release_sum2)) +
 ```
 
 
+```{r}
+allRelevantData <- df %>%
+  select("YEAR","TRI_FACILITY_ID","FRS_ID","FACILITY_NAME","STREET_ADDRESS","CITY","COUNTY","ST","ZIP","BIA_CODE","TRIBE","LATITUDE","LONGITUDE",
+         "FEDERAL_FACILITY","INDUSTRY_SECTOR_CODE","INDUSTRY_SECTOR","PRIMARY_SIC","SIC_2","SIC_3","SIC_4","SIC_5","SIC_6",
+         "PRIMARY_NAICS","NAICS_2","NAICS_3","NAICS_4","NAICS_5","NAICS_6","DOC_CTRL_NUM","CHEMICAL",
+         "SRS_ID","CLEAR_AIR_ACT_CHEMICAL","CLASSIFICATION","METAL","METAL_CATEGORY","CARCINOGEN","FORM_TYPE","UNIT_OF_MEASURE",
+         "ON.SITE_RELEASE_TOTAL","OFF.SITE_RELEASE_TOTAL","OFF.SITE_RECOVERY_TOTAL","OFF.SITE_TREATED_TOTAL","TOTAL_RELEASES",
+         "X8.1_RELEASES","X8.1A_ON.SITE_CONTAINED_REL.","X8.1B_ON.SITE_OTHER_RELEASES","X8.1C_OFF.SITE_CONTAINED_REL.","X8.1D_OFF.SITE_OTHER_RELEASES",
+         "X8.2_ENERGY_RECOVERY_ON.SITE","X8.3_ENERGY_RECOVERY_OFF.SITE","X8.4_RECYCLING_ON.SITE","X8.5_RECYCLING_OFF.SITE","X8.6_TREATMENT_ON.SITE",
+         "X8.7_TREATMENT_OFF.SITE","PROD._WASTE_.8.1_THRU_8.7.","X8.8_ONE.TIME_RELEASE","PROD_RATIO_OR_ACTIVITY","X8.9_PRODUCTION_RATIO",
+         "PARENT_COMPANY_NAME","PARENT_COMPANY_DB_NUMBER")
+
+colnames(df)
+test_TRI <- read_csv('TRI_2016_TX.csv')
+colnames(allRelevantData)
+```
+
+```{r}
+release_by_chem <- allRelevantData %>%
+  select("YEAR", "CHEMICAL", "TOTAL_RELEASES") %>%
+  group_by(YEAR, CHEMICAL) %>%
+  summarise(releaseInYear = sum(TOTAL_RELEASES), avgReleaseInYear = mean(TOTAL_RELEASES))
+head(release_by_chem)
+```
+
+
+```{r}
+ggplot(release_by_chem, aes(x="chemical", y= 'year')) +
+  geom_bar()
+         
+```
 
 
 
