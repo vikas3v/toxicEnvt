@@ -118,9 +118,6 @@ head(release_by_chem)
 
 
 ```{r}
-ggplot(release_by_chem, aes(x="chemical", y= 'year')) +
-  geom_bar()
-         
 release_by_chem_2016 <- release_by_chem %>%
   filter(YEAR == 2016) %>%
   group_by(CHEMICAL) %>%
