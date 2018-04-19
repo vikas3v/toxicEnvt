@@ -52,8 +52,9 @@ head(df)
 
 ```{r}
 dat <- df %>%
-  select("YEAR", "LATITUDE","LONGITUDE", "INDUSTRY_SECTOR", "CHEMICAL", "CARCINOGEN", "TOTAL_RELEASES", "UNIT_OF_MEASURE", "CLASSIFICATION") %>%
-  filter(INDUSTRY_SECTOR == "Petroleum")
+ dplyr::select("YEAR", "LATITUDE","LONGITUDE", "INDUSTRY_SECTOR", "CHEMICAL", "CARCINOGEN", "TOTAL_RELEASES", "UNIT_OF_MEASURE", "CLASSIFICATION") %>%
+  filter(INDUSTRY_SECTOR == "Petroleum")%>%
+  filter(YEAR != '1987')
 
 colnames(dat)[colnames(dat)=="LONGITUDE"] <- "lon"
 colnames(dat)[colnames(dat)=="LATITUDE"] <- "lat"
@@ -64,7 +65,7 @@ head(dat)
 # Analysis of Chemical Release by Time
 ```{r}
 total_release_time <- dat %>%
-  select("year", "total_releases", "unit_of_measure") %>%
+  dplyr::select("year", "total_releases", "unit_of_measure") %>%
   filter(unit_of_measure == "Pounds") %>%    #dioxins measured in grams, excluding these
   group_by(year) %>%
   summarise(release_sum = sum(total_releases))
@@ -85,7 +86,7 @@ How much of the post 2009 increase is from returning to normal business and how 
 
 ```{r}
 pre_release_time <- dat %>%
-  select("year", "total_releases", "unit_of_measure") %>%
+  dplyr::select("year", "total_releases", "unit_of_measure") %>%
   filter(unit_of_measure == "Pounds" & year <= "1994") %>%    #dioxins measured in grams, excluding these
   group_by(year) %>%
   summarise(pre_release_sum = sum(total_releases))
@@ -98,7 +99,7 @@ ggplot(pre_release_time, aes(x = year, y = pre_release_sum)) +
 ## Post 1994 graph
 ```{r}
 pre_release_time <- dat %>%
-  select("year", "total_releases", "unit_of_measure") %>%
+  dplyr::select("year", "total_releases", "unit_of_measure") %>%
   filter(unit_of_measure == "Pounds" & year >= "1994") %>%    #dioxins measured in grams, excluding these
   group_by(year) %>%
   summarise(pre_release_sum = sum(total_releases))
@@ -111,7 +112,7 @@ ggplot(pre_release_time, aes(x = year, y = pre_release_sum)) +
 ## Release of dioxin by time
 ```{r}
 dioxin_release_time <- dat %>%
-  select("year", "total_releases", "unit_of_measure") %>%
+  dplyr::select("year", "total_releases", "unit_of_measure") %>%
   filter(unit_of_measure == "Grams") %>%    #dioxins measured in grams, excluding these
   group_by(year) %>%
   summarise(dioxin_sum = sum(total_releases))
@@ -160,7 +161,14 @@ par(mfrow = c(1, 1)) # go back to 1 by 1 plots (default)
 Clearly, this regression suffers severely form outliers. So the next step would be to remove said outliers.
 
 ```{r}
-setwd("/Users/Nakul/Documents/Columbia /S2/Env Data Analysis/Final Project/toxicEnvt/")
 
 ```
 
+#Simple Linear Regression with Polynomial Fit
+
+```{r}
+  simple_linear_regression_poly = lm(total_releases ~ lat + lon +poly(year,3,raw=TRUE), data=dat)
+  par(mfrow = c(2,2))
+  plot(simple_linear_regression_poly)
+  summary(simple_linear_regression_poly)
+```
