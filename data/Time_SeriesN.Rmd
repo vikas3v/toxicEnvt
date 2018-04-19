@@ -129,19 +129,38 @@ colnames(allRelevantData)
 
 ```{r}
 release_by_chem <- allRelevantData %>%
-  select("YEAR", "CHEMICAL", "TOTAL_RELEASES") %>%
-  group_by(YEAR, CHEMICAL) %>%
+  select("YEAR", "CHEMICAL", "TOTAL_RELEASES", "CLASSIFICATION") %>%
+  group_by(YEAR, CHEMICAL, CLASSIFICATION) %>%
   summarise(releaseInYear = sum(TOTAL_RELEASES), avgReleaseInYear = mean(TOTAL_RELEASES))
 head(release_by_chem)
 ```
 
 
 ```{r}
-ggplot(release_by_chem, aes(x="chemical", y= 'year')) +
-  geom_bar()
-         
+release_by_chem_2016 <- release_by_chem %>%
+  filter(YEAR == 2016) %>%
+  group_by(CHEMICAL) %>%
+  summarize(total_release = sum(releaseInYear)) %>%
+  filter(total_release > 100000) %>%
+  mutate(chem_label = substr(CHEMICAL,1,30))
+head(release_by_chem_2016)
+ggplot(release_by_chem_2016, aes(x=chem_label, y=total_release)) +
+  geom_col()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+       
 ```
 
+```{r}
+release_by_dioxin_2016 <- release_by_chem %>%
+  filter(YEAR == 2016, CLASSIFICATION == 'PBT') %>%
+  group_by(CHEMICAL) %>%
+  summarize(total_release = sum(releaseInYear)) %>%
+  mutate(chem_label = substr(CHEMICAL,1,30))
+head(release_by_dioxin_2016)
+ggplot(release_by_dioxin_2016, aes(x=chem_label, y=total_release)) +
+  geom_col()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
 
 
 

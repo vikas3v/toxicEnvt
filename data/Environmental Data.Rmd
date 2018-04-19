@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 
 ```{r}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr, ggplot2, mapproj, readr, ggthemes, viridis, tidyr, reshape2,maps, mapdata, ggmap, stringr)
+pacman::p_load(dplyr, ggplot2, mapproj, readr, ggthemes, viridis, tidyr, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap)
 ```
 
 
@@ -31,11 +31,11 @@ pacman::p_load(dplyr, ggplot2, mapproj, readr, ggthemes, viridis, tidyr, reshape
 
 ```{r}
 TRI <- read_csv('TRI_2016_TX.csv') %>%
-  dplyr::select(LATITUDE,LONGITUDE, INDUSTRY_SECTOR)%>%
+  dplyr::select(LATITUDE,LONGITUDE, INDUSTRY_SECTOR,TOTAL_RELEASES)%>%
   filter(INDUSTRY_SECTOR == "Petroleum")
 colnames(TRI)[colnames(TRI)=="LONGITUDE"] <- "long"
 colnames(TRI)[colnames(TRI)=="LATITUDE"] <- "lat"
-
+TRI
 ```
 
 **Texas Map:**
@@ -69,4 +69,46 @@ texas_map+ geom_point(aes(x=long, y = lat, alpha=0.1) , data = TRI) +
   scale_color_viridis(option = 'magma') 
 
 
+```
+
+#KRIGING
+```{r}
+by_TRI <- TRI %>%
+  group_by(long,lat) %>%
+  summarise(Total_Release = sum(TOTAL_RELEASES))
+by_TRI
+```
+
+```{r}
+set.seed (2375)
+test_size <- floor (0.4*nrow(by_TRI))
+test_idx <- sample(seq_len(nrow(by_TRI)), size = test_size) 
+train <- by_TRI[-test_idx , ] %>%
+  as_tibble ()
+test <- by_TRI [ test_idx , ] %>% 
+  as_tibble ()
+
+train
+test
+```
+
+Creating spatial objects by assigning coords.
+
+```{r}
+train_sp <- train
+coordinates(train_sp) <- ~long + lat
+test_sp <- test
+coordinates(test_sp) <- ~long + lat
+```
+Fitting variogram and a kriging model to the data using autoKrige function.
+```{r}
+krige_model <- autoKrige(
+  formula = Total_Release ~ lat + long,
+  input_data = train_sp,
+  new_data = test_sp,
+  data_variogram = train_sp,
+  model = c ( "Sph", "Exp", "Gau", "Ste"),
+  kappa = c ( 0.05, seq(0.2, 2, 0.1), 5, 10)
+)
+plot(krige_model)
 ```
