@@ -24,10 +24,12 @@ knitr::opts_chunk$set(
 #Load in packages
 ```{r packages, message=FALSE}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table)
+pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate)
 ```
 
 # Data Exploration
+
+This data set is vast and highly nuanced, in order to approach the analysis methodologically, we start by only considering the most simple variables. Our goal is to examine how the total chemical release varies both by location and by time, attempt to fit a model to this and then test the succe
 
 ##Reading in and combining all the data files
 ```{r read, message=FALSE}
@@ -47,35 +49,51 @@ df = do.call(rbind, import_files)
 head(df)
 ```
 
-#Main columns we want to work with
+
 ```{r}
 dat <- df %>%
-  select("YEAR", "LATITUDE","LONGITUDE", "INDUSTRY_SECTOR", "CHEMICAL", "CARCINOGEN", "TOTAL_RELEASES", "UNIT_OF_MEASURE") %>%
+  select("YEAR", "LATITUDE","LONGITUDE", "INDUSTRY_SECTOR", "CHEMICAL", "CARCINOGEN", "TOTAL_RELEASES", "UNIT_OF_MEASURE", "CLASSIFICATION") %>%
   filter(INDUSTRY_SECTOR == "Petroleum")
 
-colnames(dat)[colnames(dat)=="LONGITUDE"] <- "long"
+colnames(dat)[colnames(dat)=="LONGITUDE"] <- "lon"
 colnames(dat)[colnames(dat)=="LATITUDE"] <- "lat"
 names(dat)[1:length(dat)] <- tolower(names(dat)[1:length(dat)])
 head(dat)
 ```
 
 
-# Analysis
-Change in total chemical release by time
-Change in amount of individual chemical releases by time
-Change in chemical release type by time
+## Energy Dataset
 
-## Plotting the total release of all chemicals over time
+```{r}
+setwd("/Users/Nakul/Documents/Columbia /S2/Env Data Analysis/Final Project/toxicEnvt/")
+df2 <- read_csv('Energy.csv') %>%
+  setNames(tolower(names(.))) # variable names are lower case
+prod <- as.numeric(df2[43, 12:16])
+years <- c(2010, 2011, 2012, 2013, 2014)
+energy <- data.frame(prod, years)
+energy
+
+
+```
+
+
+```{r}
+ggplot(energy, aes(x = years, y = prod)) +
+  geom_point()
+```
+
+# Analysis of Chemical Release by Time
 ```{r}
 total_release_time <- dat %>%
   select("year", "total_releases", "unit_of_measure") %>%
   filter(unit_of_measure == "Pounds") %>%    #dioxins measured in grams, excluding these
   group_by(year) %>%
   summarise(release_sum = sum(total_releases))
-
+total_release_time
 
 ```
 
+## All chemicals released from start to end of data time period
 ```{r}
 ggplot(total_release_time, aes(x = year, y = release_sum)) +
   geom_point()
@@ -85,82 +103,115 @@ Figure out when exactly shale gas revolution occurs
 Why was it decreasing before the financial crisis
 How much of the post 2009 increase is from returning to normal business and how much of it was a genuine increase in petroleum activity.
 
+## Pre 1994 Graph
 
 ```{r}
-total_release_time <- dat %>%
+pre_release_time <- dat %>%
+  select("year", "total_releases", "unit_of_measure") %>%
+  filter(unit_of_measure == "Pounds" & year <= "1994") %>%    #dioxins measured in grams, excluding these
+  group_by(year) %>%
+  summarise(pre_release_sum = sum(total_releases))
+
+ggplot(pre_release_time, aes(x = year, y = pre_release_sum)) +
+  geom_point()
+
+```
+
+## Post 1994 graph
+```{r}
+pre_release_time <- dat %>%
+  select("year", "total_releases", "unit_of_measure") %>%
+  filter(unit_of_measure == "Pounds" & year >= "1994") %>%    #dioxins measured in grams, excluding these
+  group_by(year) %>%
+  summarise(pre_release_sum = sum(total_releases))
+
+ggplot(pre_release_time, aes(x = year, y = pre_release_sum)) +
+  geom_point()
+
+```
+
+## Release of dioxin by time
+```{r}
+dioxin_release_time <- dat %>%
   select("year", "total_releases", "unit_of_measure") %>%
   filter(unit_of_measure == "Grams") %>%    #dioxins measured in grams, excluding these
   group_by(year) %>%
-  summarise(release_sum = sum(total_releases))
+  summarise(dioxin_sum = sum(total_releases))
 
+ggplot(dioxin_release_time, aes(x = year, y = dioxin_sum)) +
+  geom_point()
+```
+
+## Energy Dataset
+
+```{r}
+setwd("/Users/Nakul/Documents/Columbia /S2/Env Data Analysis/Final Project/toxicEnvt/")
+df2 <- read_csv('Energy.csv') %>%
+  setNames(tolower(names(.))) # variable names are lower case
+prod <- as.numeric(df2[43, 12:16])
+years <- c(2010, 2011, 2012, 2013, 2014)
+energy <- data.frame(prod, years)
 
 ```
 
-
-## Plotting total release amount release type
 ```{r}
-total_release_time2 <- dat %>%
+
+comp <- dat %>%
   select("year", "total_releases", "unit_of_measure") %>%
-  filter(unit_of_measure == "Grams") %>%    #dioxins measured in grams, excluding these
+  filter(unit_of_measure == "Pounds" & year >= "2010" & year <= "2014") %>%    #dioxins measured in grams, excluding these
   group_by(year) %>%
-  summarise(release_sum2 = sum(total_releases))
-ggplot(total_release_time2, aes(x = year, y = release_sum2)) +
-  geom_line()
+  summarise(pre_release_sum = sum(total_releases))
 
+en <- data.frame(energy, comp)  #joining data into a data frame
+colnames(en)[which(names(en) == "prod")] <- "Total Energy Production in TX"
+colnames(en)[which(names(en) == "pre_release_sum")] <- "Toxic Chemical Release in TX"
+
+melt_en <- melt(en, id = c("year", "years"))   #melting the predictions together
+
+ggplot(data = melt_en, aes(x = year, y = value)) +
+  geom_point() +
+  facet_wrap("variable")
+  
+    #separating plots based on prediction index
+```
+
+
+# Analysis of Chemical Release by Location
+
+```{r}
+states <- map_data("state") 
+texas <- subset(states, region %in% c("texas"))
+
+texas_map <- ggplot(data = texas) + 
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "palegreen", color = "black") + 
+  coord_fixed(1.3)
 ```
 
 
 ```{r}
-allRelevantData <- df %>%
-  select("YEAR","TRI_FACILITY_ID","FRS_ID","FACILITY_NAME","STREET_ADDRESS","CITY","COUNTY","ST","ZIP","BIA_CODE","TRIBE","LATITUDE","LONGITUDE",
-         "FEDERAL_FACILITY","INDUSTRY_SECTOR_CODE","INDUSTRY_SECTOR","PRIMARY_SIC","SIC_2","SIC_3","SIC_4","SIC_5","SIC_6",
-         "PRIMARY_NAICS","NAICS_2","NAICS_3","NAICS_4","NAICS_5","NAICS_6","DOC_CTRL_NUM","CHEMICAL",
-         "SRS_ID","CLEAR_AIR_ACT_CHEMICAL","CLASSIFICATION","METAL","METAL_CATEGORY","CARCINOGEN","FORM_TYPE","UNIT_OF_MEASURE",
-         "ON.SITE_RELEASE_TOTAL","OFF.SITE_RELEASE_TOTAL","OFF.SITE_RECOVERY_TOTAL","OFF.SITE_TREATED_TOTAL","TOTAL_RELEASES",
-         "X8.1_RELEASES","X8.1A_ON.SITE_CONTAINED_REL.","X8.1B_ON.SITE_OTHER_RELEASES","X8.1C_OFF.SITE_CONTAINED_REL.","X8.1D_OFF.SITE_OTHER_RELEASES",
-         "X8.2_ENERGY_RECOVERY_ON.SITE","X8.3_ENERGY_RECOVERY_OFF.SITE","X8.4_RECYCLING_ON.SITE","X8.5_RECYCLING_OFF.SITE","X8.6_TREATMENT_ON.SITE",
-         "X8.7_TREATMENT_OFF.SITE","PROD._WASTE_.8.1_THRU_8.7.","X8.8_ONE.TIME_RELEASE","PROD_RATIO_OR_ACTIVITY","X8.9_PRODUCTION_RATIO",
-         "PARENT_COMPANY_NAME","PARENT_COMPANY_DB_NUMBER")
-
-colnames(df)
-test_TRI <- read_csv('TRI_2016_TX.csv')
-colnames(allRelevantData)
+texas_map + geom_point(aes(x=lon, y = lat, size = total_releases) , data = dat) + 
+  scale_size_continuous(range=c(3, 10))+ 
+  scale_color_viridis() +
+  theme_map()
 ```
+Analysis: Map displaying the variability of the total release by location
+
+
+#Model 1: Simple Linear Regression
 
 ```{r}
-release_by_chem <- allRelevantData %>%
-  select("YEAR", "CHEMICAL", "TOTAL_RELEASES", "CLASSIFICATION") %>%
-  group_by(YEAR, CHEMICAL, CLASSIFICATION) %>%
-  summarise(releaseInYear = sum(TOTAL_RELEASES), avgReleaseInYear = mean(TOTAL_RELEASES))
-head(release_by_chem)
+all_reg <- lm(total_releases ~ lat + lon + year, data = dat)
+summary(all_reg)
 ```
+From the initial regression, we see that time is the most significant contributor to predict total chemical release.
 
 
 ```{r}
-release_by_chem_2016 <- release_by_chem %>%
-  filter(YEAR == 2016) %>%
-  group_by(CHEMICAL) %>%
-  summarize(total_release = sum(releaseInYear)) %>%
-  filter(total_release > 100000) %>%
-  mutate(chem_label = substr(CHEMICAL,1,30))
-head(release_by_chem_2016)
-ggplot(release_by_chem_2016, aes(x=chem_label, y=total_release)) +
-  geom_col()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-       
-```
+par(mfrow = c(2, 2)) # set up 2 by 2 plot
+plot(all_reg) # built-in diagnostic plots
+par(mfrow = c(1, 1)) # go back to 1 by 1 plots (default)
 
-```{r}
-release_by_dioxin_2016 <- release_by_chem %>%
-  filter(YEAR == 2016, CLASSIFICATION == 'PBT') %>%
-  group_by(CHEMICAL) %>%
-  summarize(total_release = sum(releaseInYear)) %>%
-  mutate(chem_label = substr(CHEMICAL,1,30))
-head(release_by_dioxin_2016)
-ggplot(release_by_dioxin_2016, aes(x=chem_label, y=total_release)) +
-  geom_col()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
-
+Clearly, this regression suffers severely form outliers. So the next step would be to remove said outliers.
 
 
