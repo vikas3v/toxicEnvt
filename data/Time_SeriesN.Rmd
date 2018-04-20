@@ -157,16 +157,16 @@ energy <- data.frame(prod, years)
 ```{r}
 
 comp <- dat %>%
-  select("year", "total_releases", "unit_of_measure") %>%
+  select("year", "total_releases", "unit_of_measure", "lon", "lat") %>%
   filter(unit_of_measure == "Pounds" & year >= "2010" & year <= "2014") %>%    #dioxins measured in grams, excluding these
   group_by(year) %>%
-  summarise(pre_release_sum = sum(total_releases))
+  summarise(pre_release_sum = sum(total_releases), lon = mean(lon), lat = mean(lat))
 
 en <- data.frame(energy, comp)  #joining data into a data frame
 colnames(en)[which(names(en) == "prod")] <- "Total Energy Production in TX"
 colnames(en)[which(names(en) == "pre_release_sum")] <- "Toxic Chemical Release in TX"
 
-melt_en <- melt(en, id = c("year", "years"))   #melting the predictions together
+melt_en <- melt(en, id = c("year", "years", "lon", "lat"))   #melting the predictions together
 
 ggplot(data = melt_en, aes(x = year, y = value)) +
   geom_point() +
@@ -214,4 +214,8 @@ par(mfrow = c(1, 1)) # go back to 1 by 1 plots (default)
 ```
 Clearly, this regression suffers severely form outliers. So the next step would be to remove said outliers.
 
+```{r}
+all_reg <- lm(`Toxic Chemical Release in TX` ~ lat + lon + year + `Total Energy Production in TX`, data = en)
+summary(all_reg)
+```
 
