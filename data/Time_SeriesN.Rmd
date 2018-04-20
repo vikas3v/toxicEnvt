@@ -205,9 +205,17 @@ summary(all_reg)
 ```
 From the initial regression, we see that time is the most significant contributor to predict total chemical release.
 
+```{r}
+par(mfrow = c(2, 2)) # set up 2 by 2 plot
+plot(all_reg) # built-in diagnostic plots
+par(mfrow = c(1, 1)) # go back to 1 by 1 plots (default)
+
+```
+Clearly, this regression suffers severely form outliers. So the next step would be to remove said outliers.
+
+
 
 ```{r}
-<<<<<<< HEAD
 release_by_type_onsite <- df %>%
   mutate(air_releases = X5.1_FUGITIVE_AIR + X5.2_STACK_AIR) %>%
   mutate(water_releases = X5.3_WATER) %>%
@@ -230,13 +238,6 @@ ggplot(release_by_type_onsite_2016, aes(x=YEAR, y=tot_air_releases)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-=======
-par(mfrow = c(2, 2)) # set up 2 by 2 plot
-plot(all_reg) # built-in diagnostic plots
-par(mfrow = c(1, 1)) # go back to 1 by 1 plots (default)
 
-```
-Clearly, this regression suffers severely form outliers. So the next step would be to remove said outliers.
->>>>>>> 6460d6fc25d23ef850354c982d98837ea1c979b6
 
 
