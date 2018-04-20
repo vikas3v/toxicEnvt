@@ -205,7 +205,6 @@ summary(all_reg)
 ```
 From the initial regression, we see that time is the most significant contributor to predict total chemical release.
 
-
 ```{r}
 par(mfrow = c(2, 2)) # set up 2 by 2 plot
 plot(all_reg) # built-in diagnostic plots
@@ -218,4 +217,31 @@ Clearly, this regression suffers severely form outliers. So the next step would 
 all_reg <- lm(`Toxic Chemical Release in TX` ~ lat + lon + year + `Total Energy Production in TX`, data = en)
 summary(all_reg)
 ```
+
+
+```{r}
+release_by_type_onsite <- df %>%
+  mutate(air_releases = X5.1_FUGITIVE_AIR + X5.2_STACK_AIR) %>%
+  mutate(water_releases = X5.3_WATER) %>%
+  mutate(underground_releases = X5.4_UNDERGROUND + X5.4.1_UNDERGROUND_CLASS_I + X5.4.2_UNDERGROUND_CLASS_II.V) %>%
+  mutate(landfills = X5.5.1_LANDFILLS + X5.5.1A_RCRA_C_LANDFILLS + X5.5.1B_OTHER_LANDFILLS) %>%
+  mutate(land_treatment = X5.5.2_LAND_TREATMENT)  %>%
+  mutate(surface_impoundment = X5.5.3_SURFACE_IMPOUNDMENT + X5.5.3A_RCRA_C_SURFACE_IMP. + X5.5.3B_Other_SURFACE_IMP.) %>%
+  mutate(other_disposal = X5.5.4_OTHER_DISPOSAL) %>%
+  select(YEAR, CHEMICAL, FACILITY_NAME, CLASSIFICATION, UNIT_OF_MEASURE, air_releases, water_releases, underground_releases, landfills, land_treatment, surface_impoundment, other_disposal)
+```
+
+
+```{r}
+release_by_type_onsite_2016 <- release_by_type_onsite %>%
+  group_by(YEAR) %>%
+  summarize(tot_air_releases = sum(air_releases), tot_water_releases = sum(water_releases), tot_underground_releases = sum(underground_releases), tot_landfills = sum(landfills), tot_land_treatment = sum(land_treatment), tot_surface_impoundment = sum(surface_impoundment), tot_other_disposal = sum(other_disposal)) 
+
+ggplot(release_by_type_onsite_2016, aes(x=YEAR, y=tot_air_releases)) +
+  geom_area()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+
 
