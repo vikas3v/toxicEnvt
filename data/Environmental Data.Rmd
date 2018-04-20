@@ -50,18 +50,6 @@ texas_map <- ggplot(data = texas) +
 texas_map
 ```
 
-**Counties in texas:**
-```{r}
-tx_df <- subset(states, region == "texas") 
-counties <- map_data("county")
-tx_county <- subset(counties, region == "texas")
-tx_base <- ggplot(data = tx_df, mapping = aes(x = long, y = lat, group= group)) + 
-  coord_fixed(1.3) + 
-  geom_polygon(color = "black", fill = "gray")
-tx_base +geom_polygon(data = tx_county, fill = NA, color = "white") + 
-  geom_polygon(color = "black", fill = NA)
-```
-
 **PLotting petroleum data in the map:**
 ```{r}
 texas_map+ geom_point(aes(x=long, y = lat, alpha=0.1) , data = TRI) + 
@@ -112,3 +100,10 @@ krige_model <- autoKrige(
 )
 plot(krige_model)
 ```
+Analysis:
+
+Initially we see a sharp increase in the variance with distance. This starts flattening out, converging to a semi-variance of 8e+11 as distance increases. The Matern model is used. It uses M Stein's parameterization from "Interpolation of Spatial Data: Some Theory for Kriging". 
+
+
+
+
