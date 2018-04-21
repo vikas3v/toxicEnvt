@@ -42,7 +42,6 @@ import_files = lapply(file_names, read.csv, stringsAsFactors = FALSE)
 
 # append those files one after the other (collapse list elements to one dataset) and save it as d
 df = do.call(rbind, import_files)
-
 ```
 
 ```{r}
@@ -59,6 +58,8 @@ colnames(dat)[colnames(dat)=="LONGITUDE"] <- "lon"
 colnames(dat)[colnames(dat)=="LATITUDE"] <- "lat"
 names(dat)[1:length(dat)] <- tolower(names(dat)[1:length(dat)])
 head(dat)
+
+
 ```
 
 
