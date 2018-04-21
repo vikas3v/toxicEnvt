@@ -1,0 +1,45 @@
+---
+title: "Term Project PCA"
+author: "Vikas Vicraman, Hetvi Dave, Nakul Nair"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::html_docco:
+    highlight: kate
+    toc: true
+    toc_depth: 3
+---
+
+```{r knitr_init, echo=FALSE, cache=FALSE}
+# DO NOT edit this block
+knitr::opts_chunk$set(
+  cache=TRUE,
+  comment=NA,
+  message=FALSE,
+  warning=FALSE,
+  fig.width=12,
+  fig.height=7
+)
+```
+
+#Load in packages
+```{r packages, message=FALSE}
+if(!require(pacman)) install.packages('pacman')
+pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate)
+```
+
+# Data Exploration
+
+This data set is vast and highly nuanced, in order to approach the analysis methodologically, we start by only considering the most simple variables. Our goal is to examine how the total chemical release varies both by location and by time, attempt to fit a model to this and then test the succe
+
+##Reading in and combining all the data files
+```{r read, message=FALSE}
+# get the names of the csv files in your current directory
+file_names = list.files(pattern = "[.]csv$")  
+
+# for every name you found go and read the csv with that name 
+# (this creates a list of files)
+import_files = lapply(file_names, read.csv, stringsAsFactors = FALSE)
+
+# append those files one after the other (collapse list elements to one dataset) and save it as d
+df = do.call(rbind, import_files)
+```
