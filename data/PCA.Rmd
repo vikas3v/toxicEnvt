@@ -109,9 +109,11 @@ release_by_type_onsite <- df %>%
 ```{r}
 release_by_type_onsite_2016 <- release_by_type_onsite %>%
   group_by(YEAR) %>%
-  summarize(tot_air_releases = sum(air_releases), tot_water_releases = sum(water_releases), tot_underground_releases = sum(underground_releases), tot_landfills = sum(landfills), tot_land_treatment = sum(land_treatment), tot_surface_impoundment = sum(surface_impoundment), tot_other_disposal = sum(other_disposal)) 
-
-ggplot(release_by_type_onsite_2016, aes(x=YEAR, y=tot_air_releases)) +
+  summarize(tot_air_releases = sum(air_releases), tot_water_releases = sum(water_releases), tot_underground_releases = sum(underground_releases), tot_landfills = sum(landfills), tot_land_treatment = sum(land_treatment), tot_surface_impoundment = sum(surface_impoundment), tot_other_disposal = sum(other_disposal)) %>%
+  gather(Type_ofRelease, amount, -YEAR)
+colnames(release_by_type_onsite_2016)
+ggplot(release_by_type_onsite_2016, aes(x=YEAR, y=amount, fill = Type_ofRelease)) +
   geom_area()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  scale_color_viridis()
 ```
