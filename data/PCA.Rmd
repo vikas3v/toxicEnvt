@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 #Load in packages
 ```{r packages, message=FALSE}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate)
+pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, tidyr,SpatPCA)
 ```
 
 # Data Exploration
@@ -58,10 +58,36 @@ allRelevantData <- df %>%
          "PARENT_COMPANY_NAME","PARENT_COMPANY_DB_NUMBER")
 
 colnames(allRelevantData)
+hist(allRelevantData$TOTAL_RELEASES)#[CHEMICAL == 'XYLENE (MIXED ISOMERS)'])
 ```
+#PCA
+```{r}
+pca_df <- allRelevantData %>%
+  select(YEAR, LATITUDE, LONGITUDE, CHEMICAL, TOTAL_RELEASES) %>%
+  filter(CHEMICAL == 'XYLENE (MIXED ISOMERS)') %>%
+  mutate(id=1:n())%>%
+  spread(YEAR, TOTAL_RELEASES) 
+pca_df[is.na(pca_df)] <- 0
+hist(log(pca_df_w0$'2016'/mean(pca_df_w0$'2016')))
+ggplot(pca_df_w0, aes(x = '2016')) + geom_histogram() + scale_x_log10()
+pca_df_w0 <- pca_df['2016' !=0]
+```
+```{r}
+pca_df_meth <- allRelevantData %>%
+  select(YEAR, LATITUDE, LONGITUDE, CHEMICAL, TOTAL_RELEASES) %>%
+  filter(CHEMICAL == 'METHANOL') %>%
+  mutate(id=1:n())%>%
+  spread(YEAR, TOTAL_RELEASES) 
+pca_df_meth[is.na(pca_df_meth)] <- 0
+hist(log(pca_df_meth$'2016'/mean(pca_df_meth$'2016')))
+hist(log(pca_df_meth$'2016'))
+```
+Log-transformed methanol data is normally distributed and we can run PCA on this data.
 
 ```{r}
-
+dimen_matrix <- pca_df_meth[1:2]
+obs_matrix <- log(pca_df_meth[5:32]+1)
+spatpca(x=dimen_matrix, Y=t(obs_matrix))
 ```
 
 
