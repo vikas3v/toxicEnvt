@@ -1,0 +1,91 @@
+---
+title: "Term Project PCA"
+author: "Vikas Vicraman, Hetvi Dave, Nakul Nair"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::html_docco:
+    highlight: kate
+    toc: true
+    toc_depth: 3
+---
+
+```{r knitr_init, echo=FALSE, cache=FALSE}
+# DO NOT edit this block
+knitr::opts_chunk$set(
+  cache=TRUE,
+  comment=NA,
+  message=FALSE,
+  warning=FALSE,
+  fig.width=12,
+  fig.height=7
+)
+```
+
+#Load in packages
+```{r packages, message=FALSE}
+if(!require(pacman)) install.packages('pacman')
+pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate)
+```
+
+# Data Exploration
+
+This data set is vast and highly nuanced, in order to approach the analysis methodologically, we start by only considering the most simple variables. Our goal is to examine how the total chemical release varies both by location and by time, attempt to fit a model to this and then test the succe
+
+##Reading in and combining all the data files
+```{r read, message=FALSE}
+# get the names of the csv files in your current directory
+file_names = list.files(pattern = "TRI")  
+
+# for every name you found go and read the csv with that name 
+# (this creates a list of files)
+import_files = lapply(file_names, read.csv, stringsAsFactors = FALSE)
+
+# append those files one after the other (collapse list elements to one dataset) and save it as d
+df = do.call(rbind, import_files)
+df
+```
+
+```{r}
+allRelevantData <- df %>%
+  select("YEAR","TRI_FACILITY_ID","FRS_ID","FACILITY_NAME","STREET_ADDRESS","CITY","COUNTY","ST","ZIP","BIA_CODE","TRIBE","LATITUDE","LONGITUDE",
+         "FEDERAL_FACILITY","INDUSTRY_SECTOR_CODE","INDUSTRY_SECTOR","PRIMARY_SIC","SIC_2","SIC_3","SIC_4","SIC_5","SIC_6",
+         "PRIMARY_NAICS","NAICS_2","NAICS_3","NAICS_4","NAICS_5","NAICS_6","DOC_CTRL_NUM","CHEMICAL",
+         "SRS_ID","CLEAR_AIR_ACT_CHEMICAL","CLASSIFICATION","METAL","METAL_CATEGORY","CARCINOGEN","FORM_TYPE","UNIT_OF_MEASURE",
+         "ON.SITE_RELEASE_TOTAL","OFF.SITE_RELEASE_TOTAL","OFF.SITE_RECOVERY_TOTAL","OFF.SITE_TREATED_TOTAL","TOTAL_RELEASES",
+         "X8.1_RELEASES","X8.1A_ON.SITE_CONTAINED_REL.","X8.1B_ON.SITE_OTHER_RELEASES","X8.1C_OFF.SITE_CONTAINED_REL.","X8.1D_OFF.SITE_OTHER_RELEASES",
+         "X8.2_ENERGY_RECOVERY_ON.SITE","X8.3_ENERGY_RECOVERY_OFF.SITE","X8.4_RECYCLING_ON.SITE","X8.5_RECYCLING_OFF.SITE","X8.6_TREATMENT_ON.SITE",
+         "X8.7_TREATMENT_OFF.SITE","PROD._WASTE_.8.1_THRU_8.7.","X8.8_ONE.TIME_RELEASE","PROD_RATIO_OR_ACTIVITY","X8.9_PRODUCTION_RATIO",
+         "PARENT_COMPANY_NAME","PARENT_COMPANY_DB_NUMBER")
+
+colnames(allRelevantData)
+```
+
+```{r}
+
+```
+
+
+
+#Release by Type
+```{r}
+release_by_type_onsite <- df %>%
+  mutate(air_releases = X5.1_FUGITIVE_AIR + X5.2_STACK_AIR) %>%
+  mutate(water_releases = X5.3_WATER) %>%
+  mutate(underground_releases = X5.4_UNDERGROUND + X5.4.1_UNDERGROUND_CLASS_I + X5.4.2_UNDERGROUND_CLASS_II.V) %>%
+  mutate(landfills = X5.5.1_LANDFILLS + X5.5.1A_RCRA_C_LANDFILLS + X5.5.1B_OTHER_LANDFILLS) %>%
+  mutate(land_treatment = X5.5.2_LAND_TREATMENT)  %>%
+  mutate(surface_impoundment = X5.5.3_SURFACE_IMPOUNDMENT + X5.5.3A_RCRA_C_SURFACE_IMP. + X5.5.3B_Other_SURFACE_IMP.) %>%
+  mutate(other_disposal = X5.5.4_OTHER_DISPOSAL) %>%
+  select(YEAR, CHEMICAL, FACILITY_NAME, CLASSIFICATION, UNIT_OF_MEASURE, air_releases, water_releases, underground_releases, landfills, land_treatment, surface_impoundment, other_disposal)
+```
+
+
+```{r}
+release_by_type_onsite_2016 <- release_by_type_onsite %>%
+  group_by(YEAR) %>%
+  summarize(tot_air_releases = sum(air_releases), tot_water_releases = sum(water_releases), tot_underground_releases = sum(underground_releases), tot_landfills = sum(landfills), tot_land_treatment = sum(land_treatment), tot_surface_impoundment = sum(surface_impoundment), tot_other_disposal = sum(other_disposal)) 
+
+ggplot(release_by_type_onsite_2016, aes(x=YEAR, y=tot_air_releases)) +
+  geom_area()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
