@@ -109,11 +109,13 @@ release_by_type_onsite <- df %>%
 ```{r}
 release_by_type_onsite_2016 <- release_by_type_onsite %>%
   group_by(YEAR) %>%
-  summarize(tot_air_releases = sum(air_releases), tot_water_releases = sum(water_releases), tot_underground_releases = sum(underground_releases), tot_landfills = sum(landfills), tot_land_treatment = sum(land_treatment), tot_surface_impoundment = sum(surface_impoundment), tot_other_disposal = sum(other_disposal)) %>%
+  summarize("Total Air Releases" = sum(air_releases), "Total Water Releases" = sum(water_releases), "Total Underground Releases" = sum(underground_releases), "Total Landfill Releases" = sum(landfills), "Total Land Treatment" = sum(land_treatment), "Total Surface Impoundment" = sum(surface_impoundment), "Total Other Disposal" = sum(other_disposal)) %>%
   gather(Type_ofRelease, amount, -YEAR)
 colnames(release_by_type_onsite_2016)
 ggplot(release_by_type_onsite_2016, aes(x=YEAR, y=amount, fill = Type_ofRelease)) +
   geom_area()+
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
-  scale_color_viridis()
+  scale_color_viridis() +
+  ggtitle("Different type of releases by Petroleum industry in Texas over the years") + 
+  labs(y = "Amount of Release in Pounds", fill = "Type of Release")
 ```
