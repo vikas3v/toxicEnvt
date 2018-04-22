@@ -23,19 +23,40 @@ knitr::opts_chunk$set(
 
 ```{r}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr, ggplot2, mapproj, readr, ggthemes, viridis, tidyr, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap)
+pacman::p_load(dplyr, ggplot2, mapproj, readr, ggthemes, viridis, tidyr, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap,cluster,factoextra,gridExtra,dbscan)
 ```
 
 
 ** Filtering the petroleum data:**
 
+##Reading in and combining all the data files
+```{r read, message=FALSE}
+# get the names of the csv files in your current directory
+file_names = list.files(pattern = "TRI")  
+
+# for every name you found go and read the csv with that name 
+# (this creates a list of files)
+import_files = lapply(file_names, read.csv, stringsAsFactors = FALSE)
+
+# append those files one after the other (collapse list elements to one dataset) and save it as d
+df = do.call(rbind, import_files)
+
+```
+
 ```{r}
-TRI <- read_csv('TRI_2016_TX.csv') %>%
-  dplyr::select(LATITUDE,LONGITUDE, INDUSTRY_SECTOR,TOTAL_RELEASES)%>%
+head(df)
+```
+
+
+```{r}
+dat <- df %>%
+  select("YEAR", "LATITUDE","LONGITUDE", "INDUSTRY_SECTOR", "CHEMICAL", "CARCINOGEN", "TOTAL_RELEASES", "UNIT_OF_MEASURE", "CLASSIFICATION") %>%
   filter(INDUSTRY_SECTOR == "Petroleum")
-colnames(TRI)[colnames(TRI)=="LONGITUDE"] <- "long"
-colnames(TRI)[colnames(TRI)=="LATITUDE"] <- "lat"
-TRI
+
+colnames(dat)[colnames(dat)=="LONGITUDE"] <- "long"
+colnames(dat)[colnames(dat)=="LATITUDE"] <- "lat"
+names(dat)[1:length(dat)] <- tolower(names(dat)[1:length(dat)])
+head(dat)
 ```
 
 **Texas Map:**
@@ -52,7 +73,7 @@ texas_map
 
 **PLotting petroleum data in the map:**
 ```{r}
-texas_map+ geom_point(aes(x=long, y = lat, alpha=0.1) , data = TRI) + 
+texas_map+ geom_point(aes(x=long, y = lat, alpha=0.1) , data = dat) + 
   scale_size_continuous(range=c(0.1, 1))+ 
   scale_color_viridis(option = 'magma') 
 
@@ -61,9 +82,9 @@ texas_map+ geom_point(aes(x=long, y = lat, alpha=0.1) , data = TRI) +
 
 #KRIGING
 ```{r}
-by_TRI <- TRI %>%
+by_TRI <- dat %>%
   group_by(long,lat) %>%
-  summarise(Total_Release = sum(TOTAL_RELEASES))
+  summarise(Total_Release = sum(total_releases))
 by_TRI
 ```
 
@@ -105,5 +126,47 @@ Analysis:
 Initially we see a sharp increase in the variance with distance. This starts flattening out, converging to a semi-variance of 8e+11 as distance increases. The Matern model is used. It uses M Stein's parameterization from "Interpolation of Spatial Data: Some Theory for Kriging". 
 
 
+#CLUSTERING
+```{r}
+# Prepare Data
+df <- by_TRI %>%
+  select(lat,long,Total_Release)
 
+df <- na.omit(df)
+head(df)
+```
+```{r}
+k2 <- kmeans(df, centers = 2)
+str(k2)
+k2
+```
+
+```{r}
+cluster_plot <-fviz_cluster(k2, data = df)
+```
+
+
+```{r}
+df %>%
+  as_tibble() %>%
+  mutate(cluster = k2$cluster,
+         state = row.names(by_TRI)) %>%
+  ggplot(aes(long,lat, color = factor(cluster))) +
+  geom_point()
+```
+
+```{r}
+k3 <- kmeans(df, centers = 3, nstart = 25)
+k4 <- kmeans(df, centers = 4, nstart = 25)
+k5 <- kmeans(df, centers = 5, nstart = 25)
+
+# plots to compare
+p1 <- fviz_cluster(k2, geom = "point", data = df) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3, geom = "point",  data = df) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4, geom = "point",  data = df) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5, geom = "point",  data = df) + ggtitle("k = 5")
+
+
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+```
 

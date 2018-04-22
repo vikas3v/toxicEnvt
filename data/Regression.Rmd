@@ -53,9 +53,7 @@ head(df)
 ```{r}
 dat <- df %>%
  dplyr::select("YEAR", "LATITUDE","LONGITUDE", "INDUSTRY_SECTOR", "CHEMICAL", "CARCINOGEN", "TOTAL_RELEASES", "UNIT_OF_MEASURE", "CLASSIFICATION") %>%
-  filter(INDUSTRY_SECTOR == "Petroleum")%>%
-  filter(YEAR != '1987')
-
+  filter(INDUSTRY_SECTOR == "Petroleum")
 colnames(dat)[colnames(dat)=="LONGITUDE"] <- "lon"
 colnames(dat)[colnames(dat)=="LATITUDE"] <- "lat"
 names(dat)[1:length(dat)] <- tolower(names(dat)[1:length(dat)])
@@ -158,11 +156,6 @@ plot(all_reg) # built-in diagnostic plots
 par(mfrow = c(1, 1)) # go back to 1 by 1 plots (default)
 
 ```
-Clearly, this regression suffers severely form outliers. So the next step would be to remove said outliers.
-
-```{r}
-
-```
 
 #Simple Linear Regression with Polynomial Fit
 
@@ -172,3 +165,4 @@ Clearly, this regression suffers severely form outliers. So the next step would 
   plot(simple_linear_regression_poly)
   summary(simple_linear_regression_poly)
 ```
+     
