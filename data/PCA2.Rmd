@@ -1,0 +1,71 @@
+---
+title: "PCA2"
+author: "Hetvi Dave"
+date: "4/21/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+ ```{r knitr_init, echo=FALSE, cache=FALSE}
+# DO NOT edit this block
+knitr::opts_chunk$set(
+  cache=TRUE,
+  comment=NA,
+  message=FALSE,
+  warning=FALSE,
+  fig.width=12,
+  fig.height=7
+)
+```
+
+```{r}
+if(!require(pacman)) install.packages('pacman')
+pacman::p_load(dplyr,tidyr,devtools, ggplot2, mapproj, readr, ggthemes, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap,viridis)
+```
+
+##Reading in and combining all the data files
+```{r read, message=FALSE}
+# get the names of the csv files in your current directory
+file_names = list.files(pattern = "TRI")  
+
+# for every name you found go and read the csv with that name 
+# (this creates a list of files)
+import_files = lapply(file_names, read.csv, stringsAsFactors = FALSE)
+
+# append those files one after the other (collapse list elements to one dataset) and save it as d
+df = do.call(rbind, import_files)
+```
+
+```{r}
+head(df)
+```
+
+```{r}
+dat <- df %>%
+  dplyr::select("YEAR", "LATITUDE","LONGITUDE", "INDUSTRY_SECTOR","CHEMICAL", "TOTAL_RELEASES") %>%
+  filter(INDUSTRY_SECTOR == "Petroleum")
+
+colnames(dat)[colnames(dat)=="LONGITUDE"] <- "long"
+colnames(dat)[colnames(dat)=="LATITUDE"] <- "lat"
+names(dat)[1:length(dat)] <- tolower(names(dat)[1:length(dat)])
+head(dat)
+```
+
+```{r}
+New <- dat%>%
+  mutate(id=1:n())%>%
+spread(chemical,total_releases)
+
+New
+```
+
+```{r}
+dat_new <-dat%>%
+  filter(year=='2016', total_releases>=50000)%>%
+  mutate(chem=substr(chemical,0,15))
+  ggplot(dat_new,aes(x=chem,y=year,fill=chem))+geom_col()+theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  scale_color_viridis()+ggtitle("Chemical Releases by Petroleum Industry in Texas during the year 2016")
+```
