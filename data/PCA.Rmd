@@ -116,6 +116,41 @@ ggplot(release_by_type_onsite_2016, aes(x=YEAR, y=amount, fill = Type_ofRelease)
   geom_area()+
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
   scale_color_viridis() +
-  ggtitle("Different type of releases by Petroleum industry in Texas over the years") + 
+  ggtitle("Different types of on-site releases by Petroleum industry in Texas over the years") + 
   labs(y = "Amount of Release in Pounds", fill = "Type of Release")
 ```
+
+
+
+#Dioxin Release
+```{r}
+dioxin_2016 <-  allRelevantData %>%
+  select("YEAR", "TOTAL_RELEASES", "UNIT_OF_MEASURE", "CHEMICAL", "CLASSIFICATION") %>%
+  filter(CLASSIFICATION == c("Dioxin", "PBT"), YEAR == 2016)
+dioxin_2016$TOTAL_RELEASES <- ifelse(dioxin_2016$UNIT_OF_MEASURE == "Grams", dioxin_2016$TOTAL_RELEASES * 0.453592, dioxin_2016$TOTAL_RELEASES)
+
+ggplot(dioxin_2016, aes(x=CHEMICAL, y = TOTAL_RELEASES)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  ggtitle("Different types of on-site releases by Petroleum industry in Texas over the years") + 
+  labs(y = "Amount of Release in Pounds")
+  
+```
+
+
+```{r}
+pbt_2016 <-  allRelevantData %>%
+  select("YEAR", "TOTAL_RELEASES", "UNIT_OF_MEASURE", "CHEMICAL", "CLASSIFICATION") %>%
+  filter(CLASSIFICATION == "PBT")
+tail(pbt_2016)
+ggplot(pbt_2016, aes(x=CHEMICAL, y = TOTAL_RELEASES)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  ggtitle("PBT releases by Petroleum industry in Texas in 2016") + 
+  labs(y = "Amount of Release in Pounds")
+dioxin_2016 <- dioxin_2016 %>%
+  filter(UNIT_OF_MEASURE == "Grams") %>%    #dioxins measured in grams, excluding these , YEAR == 2016
+  mutate(TOTAL_RELEASES = sum(TOTAL_RELEASES * 0.453592))  #converting pounds to kg
+tail(dioxin_2016)
+```
+
