@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 
 ```{r}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr,tidyr,devtools, ggplot2, mapproj, readr, ggthemes, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap,viridis)
+pacman::p_load(dplyr,tidyr,devtools, ggplot2, mapproj, readr, ggthemes, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap,viridis, stats)
 ```
 
 ##Reading in and combining all the data files
@@ -45,8 +45,9 @@ head(df)
 
 ```{r}
 dat <- df %>%
-  dplyr::select("YEAR", "LATITUDE","LONGITUDE", "INDUSTRY_SECTOR","CHEMICAL", "TOTAL_RELEASES") %>%
-  filter(INDUSTRY_SECTOR == "Petroleum")
+   filter(INDUSTRY_SECTOR == "Petroleum")%>%
+  dplyr::select("YEAR", "LATITUDE","LONGITUDE","CHEMICAL", "TOTAL_RELEASES")
+
 
 colnames(dat)[colnames(dat)=="LONGITUDE"] <- "long"
 colnames(dat)[colnames(dat)=="LATITUDE"] <- "lat"
@@ -68,4 +69,21 @@ dat_new <-dat%>%
   mutate(chem=substr(chemical,0,15))
   ggplot(dat_new,aes(x=chem,y=year,fill=chem))+geom_col()+theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
   scale_color_viridis()+ggtitle("Chemical Releases by Petroleum Industry in Texas during the year 2016")
+```
+```{r}
+New[is.na(New)] <- 0
+hist(log(New$'METHANOL'),breaks=20, main="Breaks=20")
+hist(log(New$'AMMONIA'),breaks=20, main="Breaks=20")
+
+```
+
+```{r}
+New_Data <- New %>%
+  mutate(lat_long = paste(lat, long, sep = "_"))
+ 
+```
+
+```{r}
+prin_comp <- prcomp(New_Data [5:175])
+summary(prin_comp)
 ```
