@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 #Load in packages
 ```{r packages, message=FALSE}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, tidyr,SpatPCA)
+pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, tidyr,SpatPCA, plotrix)
 ```
 
 # Data Exploration
@@ -76,20 +76,34 @@ pca_df_w0 <- pca_df['2016' !=0]
 pca_df_meth <- allRelevantData %>%
   select(YEAR, LATITUDE, LONGITUDE, CHEMICAL, TOTAL_RELEASES) %>%
   filter(CHEMICAL == 'METHANOL') %>%
+  group_by(YEAR, LATITUDE, LONGITUDE) %>%  #Grouping by since some locations had multiple entries for methanol
+  summarize(SUM_Releases = sum(TOTAL_RELEASES)) %>%
   mutate(id=1:n())%>%
-  spread(YEAR, TOTAL_RELEASES) 
+  spread(YEAR, SUM_Releases) 
 pca_df_meth[is.na(pca_df_meth)] <- 0
-hist(log(pca_df_meth$'2016'/mean(pca_df_meth$'2016')))
-hist(log(pca_df_meth$'2016'))
+pca_df_meth[5:31] <- log(pca_df_meth[5:31] + 1)
+#hist(log(pca_df_meth$'2016'/mean(pca_df_meth$'2016')))
+#hist(log(pca_df_meth$'2016'))
 ```
 Log-transformed methanol data is normally distributed and we can run PCA on this data.
 
 ```{r}
 dimen_matrix <- pca_df_meth[1:2]
-obs_matrix <- log(pca_df_meth[5:32]+1)
+obs_matrix <- log(pca_df_meth[5:31]+1)
 spatpca(x=dimen_matrix, Y=t(obs_matrix))
 ```
+#Trying PRCOMP
+```{r}
+prcomp_df_methanol <- pca_df_meth %>%
+  mutate(lat_long = paste(LATITUDE, LONGITUDE, sep = "_")) %>%
+  ungroup %>%
+  dplyr::select(lat_long, '1989', '1990', '1991', '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016')
+```
 
+```{r}
+pca <- prcomp(prcomp_df_methanol[3:29])
+summary(prcomp(prcomp_df_methanol[3:29]))
+```
 
 
 #Release by Type
@@ -141,7 +155,7 @@ ggplot(dioxin_2016, aes(x=CHEMICAL, y = TOTAL_RELEASES)) +
 ```{r}
 pbt_2016 <-  allRelevantData %>%
   select("YEAR", "TOTAL_RELEASES", "UNIT_OF_MEASURE", "CHEMICAL", "CLASSIFICATION") %>%
-  filter(CLASSIFICATION == "PBT")
+  filter(CLASSIFICATION == "PBT", CHEMICAL != "LEAD", CHEMICAL != "LEAD COMPOUNDS")
 tail(pbt_2016)
 ggplot(pbt_2016, aes(x=CHEMICAL, y = TOTAL_RELEASES)) +
   geom_col() +
@@ -154,3 +168,59 @@ dioxin_2016 <- dioxin_2016 %>%
 tail(dioxin_2016)
 ```
 
+```{r}
+air_releases_df <- release_by_type_onsite %>%
+  filter(air_releases >= 100000, YEAR == 2016)
+ggplot(air_releases_df, aes(x=substr(CHEMICAL,1,15), y = air_releases)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  ggtitle("Major Air releases by Petroleum industry in Texas in 2016") + 
+  labs(y = "Amount of Release in Pounds", x = "Chemical Released")
+```
+```{r}
+underground_releases_df <- release_by_type_onsite %>%
+  filter(underground_releases <= 100000 & underground_releases > 1000, YEAR == 2016)
+ggplot(underground_releases_df, aes(x=substr(CHEMICAL,1,15), y = underground_releases)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  ggtitle("Major Underground Releases by Petroleum industry in Texas in 2016") + 
+  labs(y = "Amount of Release in Pounds", x = "Chemical Released")
+```
+
+
+```{r}
+underground_releases_df <- release_by_type_onsite %>%
+  filter(underground_releases >= 100000 , YEAR == 2016)
+ggplot(underground_releases_df, aes(x=substr(CHEMICAL,1,15), y = underground_releases)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  ggtitle("Major Underground releases (continued) by Petroleum industry in Texas in 2016") + 
+  labs(y = "Amount of Release in Pounds", x = "Chemical Released")
+```
+
+
+```{r}
+water_releases_df <- release_by_type_onsite %>%
+  filter(water_releases >= 1000 & water_releases <=10000, YEAR == 2016)
+ggplot(water_releases_df, aes(x=substr(CHEMICAL,1,15), y = water_releases)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  ggtitle("Major Water Releases by Petroleum industry in Texas in 2016") + 
+  labs(y = "Amount of Release in Pounds", x = "Chemical Released")
+nitrate_relase <- water_releases_df %>%
+  filter(CHEMICAL == "NITRATE COMPOUNDS") %>%
+  group_by(CHEMICAL) %>%
+  summarise(amount_all = sum(water_releases))
+nitrate_relase
+```
+
+
+```{r}
+landfills_df <- release_by_type_onsite %>%
+  filter(landfills >= 100000, YEAR == 2016)
+ggplot(landfills_df, aes(x=substr(CHEMICAL,1,15), y = landfills)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  ggtitle("Major Landfill Chemicals by Petroleum industry in Texas in 2016") + 
+  labs(y = "Amount of Release in Pounds", x = "Chemical Released")
+```
