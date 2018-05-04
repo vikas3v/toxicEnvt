@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 
 ```{r}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr,tidyr,devtools, ggplot2, mapproj, readr, ggthemes, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap,viridis, stats)
+pacman::p_load(dplyr,tidyr,devtools, ggplot2, mapproj, readr, ggthemes, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap,viridis, stats,mclust,cluster,fpc,ggfortify,factoextra)
 ```
 
 ##Reading in and combining all the data files
@@ -57,12 +57,15 @@ head(dat)
 
 ```{r}
 New <- dat%>%
-  mutate(id=1:n())%>%
-spread(chemical,total_releases)
+  select(year, lat,long, chemical, total_releases)%>%
+  group_by(year, lat, long,chemical) %>%  #Grouping by since some locations had multiple duplicate entries
+  summarize(SUM_Releases = sum(total_releases))%>%
+  #mutate(id=1:n())%>%
+spread(chemical,SUM_Releases)
 
 New
 ```
-
+In order to understand which chemcials are significantly released by the Petroleum Industry we filter the chemcials on the basis of total chemical releases. This will help us understand which chemicals actually affect our analysis using this data significantly. The graph plotted below helps us visualize the same.
 ```{r}
 dat_new <-dat%>%
   filter(year=='2016', total_releases>=50000)%>%
@@ -70,6 +73,8 @@ dat_new <-dat%>%
   ggplot(dat_new,aes(x=chem,y=year,fill=chem))+geom_col()+theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
   scale_color_viridis()+ggtitle("Chemical Releases by Petroleum Industry in Texas during the year 2016")
 ```
+
+Here we plot histograms in order to make sure that after taking log our data has been normalized.Since Ammonia and Methanol are chemicals which are major contributors and released in large quantities.
 ```{r}
 New[is.na(New)] <- 0
 hist(log(New$'METHANOL'),breaks=20, main="Breaks=20")
@@ -77,13 +82,40 @@ hist(log(New$'AMMONIA'),breaks=20, main="Breaks=20")
 
 ```
 
+
 ```{r}
-New_Data <- New %>%
-  mutate(lat_long = paste(lat, long, sep = "_"))
- 
+prin_comp <- prcomp(log(New [4:174]+1))
+summary(prin_comp)
+```
+
+
+#plotting
+```{r}
+autoplot(prin_comp)
+```
+#clustering
+
+```{r}
+# Prepare Data
+df <- New
+
+df <- na.omit(df)
+head(df)
+```
+
+
+```{r}
+k2 <- kmeans(df[2:174], centers = 3)
+str(k2)
+k2
 ```
 
 ```{r}
-prin_comp <- prcomp(New_Data [5:175])
-summary(prin_comp)
+df %>%
+  as_tibble() %>%
+  mutate(cluster = k2$cluster,
+         state = row.names(by_TRI)) %>%
+  ggplot(aes(long,lat, color = factor(cluster))) +
+  geom_point()
 ```
+  
