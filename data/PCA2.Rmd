@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 
 ```{r}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr,tidyr,devtools, ggplot2, mapproj, readr, ggthemes, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap,viridis, stats,mclust,cluster,fpc,ggfortify,factoextra)
+pacman::p_load(dplyr,tidyr,devtools, ggplot2, mapproj, readr, ggthemes, reshape2,maps, mapdata, ggmap, stringr, gstat,sp, automap,viridis, stats,mclust,cluster,fpc,ggfortify,factoextra,gridExtra)
 ```
 
 ##Reading in and combining all the data files
@@ -86,18 +86,23 @@ hist(log(New$'AMMONIA'),breaks=20, main="Breaks=20")
 ```{r}
 prin_comp <- prcomp(log(New [4:174]+1))
 summary(prin_comp)
+ autoplot(prin_comp)
 ```
 
 
-#plotting
+
 ```{r}
-autoplot(prin_comp)
+df_after_pca <- data.frame(New$lat, New$long, prin_comp$x[,1:4])
+
+df_after_pca
+plot(df_after_pca[3:6], pch=16, col=rgb(0,0,0,1))
+
 ```
 #clustering
 
 ```{r}
 # Prepare Data
-df <- New
+df <- df_after_pca
 
 df <- na.omit(df)
 head(df)
@@ -105,17 +110,35 @@ head(df)
 
 
 ```{r}
-k2 <- kmeans(df[2:174], centers = 3)
+k2 <- kmeans(df, centers = 3)
 str(k2)
 k2
+```
+
+```{r}
+cluster_plot <-fviz_cluster(k2, data = df)
+cluster_plot
 ```
 
 ```{r}
 df %>%
   as_tibble() %>%
   mutate(cluster = k2$cluster,
-         state = row.names(by_TRI)) %>%
-  ggplot(aes(long,lat, color = factor(cluster))) +
+         state = row.names(df_after_pca)) %>%
+  ggplot(aes(New.long,New.lat, color = factor(cluster))) +
   geom_point()
 ```
-  
+```{r}
+k3 <- kmeans(df, centers = 3, nstart = 25)
+k4 <- kmeans(df, centers = 4, nstart = 25)
+k5 <- kmeans(df, centers = 5, nstart = 25)
+
+# plots to compare
+p1 <- fviz_cluster(k2, geom = "point", data = df) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3, geom = "point",  data = df) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4, geom = "point",  data = df) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5, geom = "point",  data = df) + ggtitle("k = 5")
+
+
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+```
