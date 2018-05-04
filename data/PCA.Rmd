@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 #Load in packages
 ```{r packages, message=FALSE}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, tidyr,SpatPCA, plotrix)
+pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, tidyr,SpatPCA, plotrix, ggfortify)
 ```
 
 # Data Exploration
@@ -44,7 +44,7 @@ import_files = lapply(file_names, read.csv, stringsAsFactors = FALSE)
 df = do.call(rbind, import_files)
 df
 ```
-
+#Getting columns relevant for our analysis from the full dataset
 ```{r}
 allRelevantData <- df %>%
   select("YEAR","TRI_FACILITY_ID","FRS_ID","FACILITY_NAME","STREET_ADDRESS","CITY","COUNTY","ST","ZIP","BIA_CODE","TRIBE","LATITUDE","LONGITUDE",
@@ -57,53 +57,45 @@ allRelevantData <- df %>%
          "X8.7_TREATMENT_OFF.SITE","PROD._WASTE_.8.1_THRU_8.7.","X8.8_ONE.TIME_RELEASE","PROD_RATIO_OR_ACTIVITY","X8.9_PRODUCTION_RATIO",
          "PARENT_COMPANY_NAME","PARENT_COMPANY_DB_NUMBER")
 
-colnames(allRelevantData)
-hist(allRelevantData$TOTAL_RELEASES)#[CHEMICAL == 'XYLENE (MIXED ISOMERS)'])
 ```
 #PCA
-```{r}
+As PCA assumes that the data is normal, a histogram of the data is checked for normality. Here, we found that taking logarithm makes the dat almost normal. "Xylene (Mixed Isomers)" was one of the most common chemicals in the dataset. The distribution for this looks normal. 
+```{r message=TRUE}
 pca_df <- allRelevantData %>%
   select(YEAR, LATITUDE, LONGITUDE, CHEMICAL, TOTAL_RELEASES) %>%
   filter(CHEMICAL == 'XYLENE (MIXED ISOMERS)') %>%
   mutate(id=1:n())%>%
   spread(YEAR, TOTAL_RELEASES) 
 pca_df[is.na(pca_df)] <- 0
-hist(log(pca_df_w0$'2016'/mean(pca_df_w0$'2016')))
-ggplot(pca_df_w0, aes(x = '2016')) + geom_histogram() + scale_x_log10()
-pca_df_w0 <- pca_df['2016' !=0]
+hist(log(pca_df$'2016'/mean(pca_df$'2016')))
 ```
+
 ```{r}
 pca_df_meth <- allRelevantData %>%
   select(YEAR, LATITUDE, LONGITUDE, CHEMICAL, TOTAL_RELEASES) %>%
   filter(CHEMICAL == 'METHANOL') %>%
   group_by(YEAR, LATITUDE, LONGITUDE) %>%  #Grouping by since some locations had multiple entries for methanol
   summarize(SUM_Releases = sum(TOTAL_RELEASES)) %>%
-  mutate(id=1:n())%>%
   spread(YEAR, SUM_Releases) 
 pca_df_meth[is.na(pca_df_meth)] <- 0
-pca_df_meth[5:31] <- log(pca_df_meth[5:31] + 1)
-#hist(log(pca_df_meth$'2016'/mean(pca_df_meth$'2016')))
-#hist(log(pca_df_meth$'2016'))
+pca_df_meth[3:30] <- log(pca_df_meth[3:30] + 1)
+hist(log(pca_df_meth$'2016'))#, breaks = 20)
 ```
-Log-transformed methanol data is normally distributed and we can run PCA on this data.
+Log-transformed methanol data is almost normally distributed and we can run PCA on this data.
 
-```{r}
-dimen_matrix <- pca_df_meth[1:2]
-obs_matrix <- log(pca_df_meth[5:31]+1)
-spatpca(x=dimen_matrix, Y=t(obs_matrix))
-```
 #Trying PRCOMP
 ```{r}
-prcomp_df_methanol <- pca_df_meth %>%
-  mutate(lat_long = paste(LATITUDE, LONGITUDE, sep = "_")) %>%
-  ungroup %>%
-  dplyr::select(lat_long, '1989', '1990', '1991', '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016')
+pca_meth_1 <- prcomp(pca_df_meth[3:30])
+summary(pca_meth_1)
+plot(pca_meth_1)
+autoplot(pca_meth_1)
+df_after_pca <- data.frame(pca_df_meth$LATITUDE, pca_df_meth$LONGITUDE, pca_meth_1$x[,1:4])
 ```
 
 ```{r}
-pca <- prcomp(prcomp_df_methanol[3:29])
-summary(prcomp(prcomp_df_methanol[3:29]))
+plot(df_after_pca[3:6], pch=16, col=rgb(0,0,0,0.5))
 ```
+
 
 
 #Release by Type
