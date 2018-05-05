@@ -24,15 +24,15 @@ knitr::opts_chunk$set(
 #Load in packages
 ```{r packages, message=FALSE}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, forecast)
+pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, forecast, tseries, astsa, Kendall)
 ```
 
 
 # What is the Data?
 
-Our data set contains information on the chemicals released by  a range of industries from 1986 to 2016. While the data is highly nuanced we want to examine chemical release by the petroleum industry in Texas. We have data on the types of chemicals and the medium through which they are released but to begin with, we will examine the total cehmical release. 
+Our data set contains information on the chemicals released by a range of industries from 1986 to 2016. While the data is extremely detailed we want to examine chemical release by the petroleum industry in Texas. We have data on the types of chemicals and the medium through which they are released but to begin with, we will examine the total chemical release. 
 
-To provide further clarification, in our data set, the petroleum industry relates to:
+To provide further clarification, when we refer to the petroleum industry we mean the following:
 
 "The Petroleum and Coal Products Manufacturing subsector is based on the transformation of crude petroleum and coal into usable products. The dominant process is petroleum refining that involves the separation of crude petroleum into component products through such techniques as cracking and distillation. In addition, this subsector includes establishments that primarily further process refined petroleum and coal products and produce products, such as asphalt coatings and petroleum lubricating oils."
 
@@ -42,7 +42,7 @@ We intend to relate this to the data on the production of crude oil in Texas, ou
 
 This data set is vast and highly nuanced, in order to approach the analysis methodologically, we start by only considering the most simple variables. Our goal is to examine how the total chemical release varies both by location and by time, attempt to fit a model to this and then test the success.
 
-##Reading in and combining all the data files
+##Reading in and aggregating all the data files
 ```{r read, message=FALSE}
 # get the names of the csv files in your current directory
 file_names = list.files(pattern = "TRI")  
@@ -60,7 +60,7 @@ df = do.call(rbind, import_files)
 head(df)
 ```
 
-
+## Examining number of observations at each lon and lat
 ```{r}
 dat <- df %>%
   select("YEAR", "LATITUDE","LONGITUDE", "INDUSTRY_SECTOR", "CHEMICAL", "CARCINOGEN", "TOTAL_RELEASES", "UNIT_OF_MEASURE", "CLASSIFICATION") %>%
@@ -71,9 +71,11 @@ colnames(dat)[colnames(dat)=="LATITUDE"] <- "lat"
 names(dat)[1:length(dat)] <- tolower(names(dat)[1:length(dat)])
 table(dat$lat)
 ```
+This was done to see if all our observations were spread across a few locations. But the amount of observations per locations varies wildly and so we will not pursue this line of thinking.
 
+##Reading in crude oil dataset
 
-## Energy Dataset
+Here we are loading in a dataset containing oil production from 1987 to 2017.
 
 ```{r}
 #setwd("/Users/Nakul/Documents/Columbia /S2/Env Data Analysis/Final Project/toxicEnvt/")
@@ -85,18 +87,18 @@ df2 <- read_csv('Energy.csv') %>%
 colnames(df2)[which(names(df2) == "crude oil production (mbbl)")] <- "oil_mbbl"
 energy <- mutate(df2, oil_kg = oil_mbbl*14000)
 energy <- energy[seq(dim(energy)[1],1),]
-energy
+head(energy)
 
 ```
 
-## Crude oil production over time
+## Plotting crude oil production over time
 
 ```{r}
 ggplot(energy, aes(x = year, y = oil_kg)) +
-  geom_point()
+  geom_line()
 ```
 
-# Analysis of Chemical Release by Time
+## Grouping chemical release by year 
 ```{r}
 total_release_time <- dat %>%
   select("year", "total_releases", "unit_of_measure") %>%
@@ -107,15 +109,11 @@ tail(total_release_time)
 
 ```
 
-## All chemicals released from start to end of data time period
+## Plotting total chemical release per year
 ```{r}
 ggplot(total_release_time, aes(x = year, y = release_sum)) +
-  geom_point()
+  geom_line()
 ```
-Analysis: Major outlier is financial crisis
-Why was it decreasing before the financial crisis
-How much of the post 2009 increase is from returning to normal business and how much of it was a genuine increase in petroleum activity.
-Remove data from 1986 and 1987
 
 ## Remoivng outliers
 
@@ -140,10 +138,8 @@ melt_en <- melt(en, id = c("year", "oil_mbbl"))   #melting the predictions toget
  ggplot(data = melt_en, aes(x = year, y = value)) +
    geom_line(aes(color = variable)) 
    
-  
-    #separating plots based on prediction index
 ```
-
+Here we have normalized and plotted total chemical release and total crude oil production. As one can see, at a glance they seem to follow the similar patterns. Both tend to increase and decrease together. 
 
 # Analysis of Chemical Release by Location - for reference, move to kriging file
 
@@ -171,61 +167,340 @@ texas_map + geom_point(aes(x=lon, y = lat, size = total_releases) , data = relea
 ```
 Analysis: Map displaying the variability of the total release by location
 
+Now that we have explored the data, we want to perform trend analysis with the eventual aim being to fit a model that might be able to make accurate predictions. The first step of this, in accordance with the trend analysis strategy presented in class, is to perform changepoint analysis. 
 
-#Model 1: Autoregression
+# Changepoint Analysis
 
-Now that we have explored both the time series' we want to fit a model to it. Here we will consider autoregression, where the total chemical release of a certain year at a certain location is a function of the regression at that location in a previous year and the total amount of petroleum produced that year. 
+## Rank Sum Test
 
-## Visualizing time series
+The rank sum test is performed with the null hypothesis being that there is no location shift between the two data sets (mu = 0). This means that there is equal probability of drawing larger or smaller values from either group, i.e. there is no changepoint.This test is used as it is non parametric and visually there is no obvious distribution function of the data. 
 
 ```{r}
-release_time <- total_release_time %>%
+release_time <- en %>%
   filter(year >= "1989")     #removing huge earlier outliers
 
-ggplot(release_time, aes(x = year, y = release_sum)) +
+
+results <- NULL
+
+for (i in 1991:2011){
+ pre <- release_time %>%
+   filter(year < i)
+  post <- release_time %>%
+   filter(year > i)
+  rank_sum <- wilcox.test(post$release_sum_n, pre$release_sum_n, mu=0, exact=TRUE, conf.int=TRUE, paired=FALSE)
+  if (rank_sum$p.value > 0.05){
+    idx <- "Null not rejected"
+  } else {
+    idx <- "Null rejected"
+  }
+  results <- rbind(results, data.frame(i, rank_sum$p.value, idx))
+}
+```
+
+
+```{r}
+ggplot(data = results, aes(x = i, y = rank_sum.p.value)) +
+  geom_line() +
+  geom_hline(yintercept = 0.05, col = 2)
+```
+The results of this are not promising. It is basically saying that across almost every year we see a changepoint, this could be a function of our noisey data. It could also be down to the fact that the rank sum test is a paired test, so the results it produces should not be completely trusted if the sample sizes are not equivalent.
+
+## Bootstrapping for changepoint analysis
+Since the rank sum test was not overly successful, we try a different method for changepoint detection.
+
+Here, I repreatedly sample with replacement and calculate the median of each data set (before and after an arbitrarily picked year where the rank sum null hypothesis was rejected). I then calculated the percentage of occurences where the median of the first data set is higher than the median of the second data set, for 1000 samples.
+
+```{r}
+change <- NULL
+
+for (f in 1991:2011){
+ pre <- release_time %>%
+   filter(year < f)
+  post <- release_time %>%
+   filter(year > f)
+  x <- pre$release_sum_n
+  y <- post$release_sum_n
+  st = rep(0, 1000) ; #initialize arrary for test to 0
+  for (i in 1:1000){m1 <- median(sample(x, length(x), replace=T)); m2 <- median(sample(y, length(y), replace=T)); if(m1 > m2)st[i]=1} 
+  perc <- ((sum(st)/1000)*100)
+  change <- rbind(change, data.frame(f, perc))
+}
+
+ggplot(data = change, aes(x = f, y = perc)) +
+  geom_line() +
+  geom_hline(yintercept = 50, col = 2) +
+  labs(x = "Year", y = "% of times median of first group is higher")
+
+
+```
+If there was no changepoint across the data, the black line would be around 50%. However, in our data this value is consistently above 50%, implying that the median of the first group (earlier years) is consistently higher than that of the second group (later years). 
+
+Although the lack of independency of the groups (due to autocorrelation) questions our results from the rank sum test, from the bootstrapping analysis the results are still reflective of an overall truth. As aforementioned, the abundance of changepoints could be a function of our oscillating data. it is worth nothing that because bootstrapping resamples, it doesn't suffer from the uneven sample size problem of the rank sum test. 
+
+```{r}
+acf2(release_time$release_sum_n)
+```
+
+This autocorrelation graph provides another reason why the rank sums test's results might not be entirely trustworthy. A major assumption of the test is that the two samples are independent of one another, however we see serial autocorrelation for lag 1. This implies the value of total release in the previous year has an effect on the release for the year in question.
+
+# Trend Analysis
+
+While we were definitely not able to say whether the data contains a changepoint, we still want to fit a model to the trends seen in the hope that it will help us quantify long term trends, assess their consistency and even extrapolate to make predictions. 
+
+## Mann Kendall
+
+```{r}
+MannKendall(release_time$release_sum_n)
+release_period <- 
+  release_time %>% 
+  mutate(time_period = ntile(year, 2))
+
+k <- MannKendall(release_time$release_sum_n)
+k$sl
+```
+
+```{r}
+time <- release_period %>%
+group_by(time_period) %>%
+summarise(mean = mean(release_sum_n), tempmedian = median(release_sum_n))
+
+```
+
+```{r}
+release_period %>%
+  group_by(time_period) %>%
+  summarize(s = MannKendall(release_sum_n)$tau)
+
+```
+
+
+## Model: Linear and Local Regression
+
+Using just time as a predictor, we want to assess how well linear and local regression models will fit our data. 
+
+```{r}
+mod_1 <- lm(release_sum_n ~ year, release_time)
+
+summary(mod_1)
+plot(release_time$year, release_time$release_sum, main="Toxic Chemical Release vs Time")
+
+abline(mod_1$coefficients,lt=2,lw=3)
+lines(lowess(x = release_time$year, y = release_time$release_sum, f=2/3), lw = 2, col = 2) 
+```
+The linear model seems to capture an overarching trend that the release of chemicals is decreasing. With the year predictor being significant, this has the potential of being a good estimate of the trend. However, the one predictor only explains 51% of the variance
+
+Similarily, the local regression model presents an initially decreasing trend but this flattens off and even increases slighly in more recent times.
+
+The residuals vs fitted plot isn't symmetrical implying the data could be non linear, moreover the normal Q-Q plot points don't lie on the straight line so the residuals are not normally distributed. Finally, the residuals vs leverage graph suggests that there are no significant outliers. 
+
+## Model: Linear regression with normalized oil production and gdp as predictors
+
+```{r}
+gdp <- read.csv('GDP_data.csv') %>%
+  setNames(tolower(names(.)))  %>%
+  filter(year >= "1989" & year < "2017") %>%
+  mutate(real_gdp_n = real.gdp/mean(real.gdp))
+
+tots <- data.frame(oil_mbbl = energy$oil_mbbl, oil_production = energy$oil_kg/mean(energy$oil_kg), year = release_time$year, total_chemical_release = release_time$release_sum/mean(release_time$release_sum), gdp = gdp$real_gdp_n)  #joining data into a data frame
+
+
+melt_tots <- melt(tots, id = c("year", "oil_mbbl"))   #melting the predictions together
+# 
+ ggplot(data = melt_tots, aes(x = year, y = value)) +
+   geom_line(aes(color = variable)) 
+#  
+# 
+# release_gdp <- cbind(en, gdp = gdp$real_gdp_n)
+# ggplot(release_gdp, aes(x = year, y = gdp)) + 
+#   geom_line()
+```
+The gdp plot is as exprected, with a dip during the financial crisis (also reflected in our chemical release data).
+
+```{r}
+mod_2 <- lm(release_sum_n ~ year + gdp + oil_kg_n, release_gdp)
+summary(mod_2)
+
+plot(release_gdp$year, release_gdp$release_sum_n, xlab="Year", ylab="Release", main="Linear Fit")
+lines(release_gdp$year, predict(mod_2))
+```
+This regression model is definitely an improvement on our previous one. Oil production is the most significant predictor of the three with GDP surprisingly being the worst. We are also able to explain ~80% of the variance in the data. 
+
+```{r}
+par(mfrow = c(2, 2)) # set up 2 by 2 plot
+plot(mod_2) # built-in diagnostic plots
+par(mfrow = c(1, 1)) # go back to 1 by 1 plots (default)
+```
+This model suffers from the same problems our first model did, and it all comes back to the fact that this data does not adhere to many of the assumptions required to apply linear regression. These assumptions include normal distribution of the data and residuals and homoscedasticity.
+
+
+##Model: ARIMA autoregression
+
+Here we will consider autoregression, where the total chemical release of a certain year at a certain location is a function of the regression at that location in a previous year and the total amount of petroleum produced that year. 
+
+### Visualizing time series
+
+```{r}
+ggplot(release_time, aes(x = year, y = release_sum_n)) +
   geom_line()
 ```
 
 
-## Stationarize time series
+### Stationarize time series
 
 Clearly, our chemical release time series is not stationary. So before using autoregression, we attempt to make the series stationary
 
 ```{r}
-time_series <- release_time %>%
-  select("year", "release_sum")
-release <- diff(log(time_series$release_sum))
+time_series <- release_gdp %>%
+  select("year", "release_sum_n", "oil_kg_n", "gdp")
+release <- diff(log(time_series$release_sum_n))
 year <- time_series$year[-1]
-
-stationary_time <- data.frame(year, release, )
-
+stationary_time <- data.frame(release, year)
 ```
 
+### Testing for stationary time series
 ```{r}
 plot(release ~ year, stationary_time, type = "l")
 adf.test(stationary_time$release, alternative="stationary", k=0)
 ```
 The null hypothesis for the adf test is that the time series has a unit root i.e. it is non stationary. As we can see, this is rejected and so we have a stationary process that we can autoregress.
 
-## Differencing order
+
+### Differencing order
+
 ```{r}
 acf2(stationary_time$release)
 ```
 We can see that the ACF at lag 1 is negative, and overall the the ACF values are small and patternless. This justifies the order of differencing we have used.
 
-## Choosing ARIMA parameters
-
-```{r}
-fitARIMA <- auto.arima(stationary_time$release, ic = "aic", trace = TRUE)
-futurVal <- forecast(fitARIMA,h=5, level=c(99.5))
-summary(futurVal)
-plot(futurVal)
-```
+### Choosing ARIMA parameters
 
 p is the number of autoregressive terms,
 d is the number of nonseasonal differences needed for stationarity, and
 q is the number of lagged forecast errors in the prediction equation.
 
+```{r}
+#fitARIMA <- auto.arima(stationary_time$release, ic = "aic", trace = TRUE)
+fitARIMA <- arima(stationary_time$release, order = c(1, 0, 0))
+futurVal <- forecast(fitARIMA,h = 5, level=c(99.5))
+summary(futurVal)
+plot(futurVal)
+```
+
+The ARIMA model is predicting what the change in chemical release will be in the upcoming years. According to the model, this will first decrease before increasing slightly and then producing no real change. A big reason for this could be our very noisy oscillating data, the model is unable to glean any real time based trend from it.
 
 
+##Model: Polynomial Fit
 
+```{r}
+lagged <- en %>%
+  mutate(lag_release = lag(release_sum_n, 1)) %>%
+  filter(!is.na(lag_release))
+release_lag <- cbind(lagged, gdp = gdp$real_gdp_n[2:length(gdp$year)])
+```
+
+
+Thus far, all our linear models have not produced reliable results. The only thing they agree on is that initially there is a downward trend in terms of chemical release. 
+
+```{r}
+poly_mod <- lm(release_sum_n ~ poly(lag_release, 3) + poly(year, 3) + poly(oil_kg_n, 3) + poly(gdp, 3), data = release_lag)
+summary(poly_mod)
+```
+
+```{r}
+plot(release_lag$year, release_lag$release_sum_n, xlab="Year", ylab="Release", main="Polynomial Fit")
+lines(release_lag$year, predict(poly_mod))
+```
+
+
+## Bootstrapping the polynomial model
+```{r}
+n_boot <- 100
+for (n in 1:n_boot){
+  new_data <- 
+    release_lag %>%
+    sample_frac(size = 1, replace = TRUE) %>%
+    arrange(year)
+  poly_i <- lm(release_sum_n ~ poly(lag_release, 3) + poly(year, 3) + poly(oil_kg_n, 3) + poly(gdp, 3), data = new_data)
+  predicted <- predict(poly_i, newdata = release_lag)
+  if (n == 1){
+    plot(release_lag$year, predicted, type='l', col=alpha('black', 0.3))
+  } else {
+    lines(release_lag$year, predicted, col=alpha('black', 0.3))
+  }
+}
+```
+Bootstrapped fit is not good. So we need to explote more models. 
+
+## Model: Local Regression
+
+We plough on, next I will try to use local regression to find a model that capture and quantify the variability of the data.
+But before implenting the model, we will split our data into training and testing sets, this way we can use the testing set to guage the accuracy of the model.
+
+### Splitting data into training and testing sets
+
+```{r}
+release_lag <- filter(release_lag, release_sum_n > 0)
+head(release_lag)
+
+set.seed(2108)
+test_size <- floor(0.40 * nrow(release_lag))
+test_idx <- sample(seq_len(nrow(release_lag)), size = test_size)
+train <- release_lag [-test_idx, ] %>% as_tibble()
+test <- release_lag[test_idx, ] %>% as_tibble()
+```
+
+### Fitting the training data
+
+```{r}
+locfit1 <- locfit(release_sum_n ~ lag_release + year + oil_kg_n + gdp, data = train)
+summary(locfit1)
+```
+
+```{r}
+fit_pred <- predict(locfit1, newdata = test)
+MSE <- mean((test$release_sum_n - fit_pred)^2)         ##difference between observed data in test and predicted data squared and then averaged.
+MSE
+```
+The predict function is used to obtain predictions using the testing dataset. The mean square error (mean squared differences of observations in testing data and predicted values) are calculated and displayed. 
+
+### Change the alpha paramater of our model 
+
+
+```{r}
+alpha_vals <- seq(0.1, 1, length.out=50) ##values to try
+gcv_2 <- gcvplot(release_sum_n ~ lag_release + year + oil_kg_n + gdp, data=release_lag, alpha=alpha_vals) %>%  
+  summary() %>%   
+  as_tibble() %>%
+  mutate(alpha = alpha_vals)
+```
+The generalized cross-validation (GCV) score is a measure of smoothness. It is used to help estimate prediction error in the model. Typically, the smaller the GCV score, the better the model will be.
+
+##` Plot the GCV score as a function of alpha
+```{r}
+ggplot(gcv_2, aes(x=alpha, y=GCV)) +
+  geom_point()
+```
+
+According to the cross validation, an alpha of 2 is optimal in our range and thus will produce the best locfit model.
+
+```{r}
+locfit2 <- locfit(release_sum_n ~ lag_release + year + oil_kg_n + gdp, data = train, alpha = 2)
+
+fit_pred2 <- predict(locfit2, newdata = test, alpha = 2)  ##prediction of already trained locfit model using new
+
+test_df <- data.frame(release = test$release_sum_n, year = test$year, lag_release = test$lag_release, lf_pred = fit_pred2)
+
+mse2 <- mean((test_df$release - fit_pred2)^2)         #difference between observed data in test and predicted data squared and then averaged.
+mse2       
+```
+
+### Comparing to mse of polynomial model
+
+```{r}
+poly_mod2 <- lm(release_sum_n ~ poly(lag_release, 3) + poly(year, 3) + poly(oil_kg_n, 3) + poly(gdp, 3), data = train)
+fit_pred0 <- predict(poly_mod2, newdata = test) 
+mse_poly <- mean((test_df$release - fit_pred0)^2)         #difference between observed data in test and predicted data squared and then averaged.
+mse_poly
+```
+
+While we were able to improve our local regression mse using cross validation, the mse is still higher than that of the polynomial model which we know doesn't produce the greatest of fits. So thus local regression is not the best model for this data.
