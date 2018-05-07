@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 #Load in packages
 ```{r packages, message=FALSE}
 if(!require(pacman)) install.packages('pacman')
-pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, tidyr,SpatPCA, plotrix, ggfortify)
+pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, tidyr,SpatPCA, plotrix, ggfortify, mclust,cluster,fpc,ggfortify,factoextra,gridExtra,stats)
 ```
 
 # Data Exploration
@@ -42,7 +42,6 @@ import_files = lapply(file_names, read.csv, stringsAsFactors = FALSE)
 
 # append those files one after the other (collapse list elements to one dataset) and save it as d
 df = do.call(rbind, import_files)
-df
 ```
 #Getting columns relevant for our analysis from the full dataset
 ```{r}
@@ -76,7 +75,8 @@ pca_df_meth <- allRelevantData %>%
   filter(CHEMICAL == 'METHANOL') %>%
   group_by(YEAR, LATITUDE, LONGITUDE) %>%  #Grouping by since some locations had multiple entries for methanol
   summarize(SUM_Releases = sum(TOTAL_RELEASES)) %>%
-  spread(YEAR, SUM_Releases) 
+  spread(YEAR, SUM_Releases) %>%
+  filter(LATITUDE != 0)
 pca_df_meth[is.na(pca_df_meth)] <- 0
 pca_df_meth[3:30] <- log(pca_df_meth[3:30] + 1)
 hist(log(pca_df_meth$'2016'))#, breaks = 20)
@@ -90,12 +90,45 @@ summary(pca_meth_1)
 plot(pca_meth_1)
 autoplot(pca_meth_1)
 df_after_pca <- data.frame(pca_df_meth$LATITUDE, pca_df_meth$LONGITUDE, pca_meth_1$x[,1:4])
+colnames(df_after_pca) <- c('lat','lon','pc1','pc2','pc3','pc4')
 ```
 
 ```{r}
 plot(df_after_pca[3:6], pch=16, col=rgb(0,0,0,0.5))
 ```
+```{r}
+df_after_pca <- na.omit(df_after_pca)
+df_after_pca <- df_after_pca %>% filter(lat != 0)
+k2 <- kmeans(df_after_pca, centers = 3)
+```
 
+```{r}
+cluster_plot <-fviz_cluster(k2, data = df_after_pca)
+cluster_plot
+```
+
+```{r}
+df_after_pca %>%
+  as_tibble() %>%
+  mutate(cluster = k2$cluster,
+         state = row.names(df_after_pca)) %>%
+  ggplot(aes(pca_df_meth$LONGITUDE, pca_df_meth$LATITUDE, color = factor(cluster))) +
+  geom_point()
+```
+```{r}
+k3 <- kmeans(df_after_pca, centers = 3, nstart = 25)
+k4 <- kmeans(df_after_pca, centers = 4, nstart = 25)
+k5 <- kmeans(df_after_pca, centers = 5, nstart = 25)
+
+# plots to compare
+p1 <- fviz_cluster(k2, geom = "point",  data = df_after_pca) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3, geom = "point",  data = df_after_pca) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4, geom = "point",  data = df_after_pca) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5, geom = "point",  data = df_after_pca) + ggtitle("k = 5")
+
+
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+```
 
 
 #Release by Type
