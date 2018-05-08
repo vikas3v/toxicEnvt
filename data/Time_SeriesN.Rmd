@@ -310,9 +310,9 @@ melt_tots <- melt(tots, id = c("year", "oil_mbbl"))   #melting the predictions t
    geom_line(aes(color = variable)) 
 #  
 # 
-# release_gdp <- cbind(en, gdp = gdp$real_gdp_n)
-# ggplot(release_gdp, aes(x = year, y = gdp)) + 
-#   geom_line()
+release_gdp <- cbind(en, gdp = gdp$real_gdp_n)
+head(release_gdp)
+
 ```
 The gdp plot is as exprected, with a dip during the financial crisis (also reflected in our chemical release data).
 
@@ -402,7 +402,7 @@ release_lag <- cbind(lagged, gdp = gdp$real_gdp_n[2:length(gdp$year)])
 Thus far, all our linear models have not produced reliable results. The only thing they agree on is that initially there is a downward trend in terms of chemical release. 
 
 ```{r}
-poly_mod <- lm(release_sum_n ~ poly(lag_release, 3) + poly(year, 3) + poly(oil_kg_n, 3) + poly(gdp, 3), data = release_lag)
+poly_mod <- lm(release_sum_n ~ poly(year, 3) + poly(oil_kg_n, 3) + poly(gdp, 3), data = release_lag)
 summary(poly_mod)
 ```
 
@@ -414,7 +414,7 @@ lines(release_lag$year, predict(poly_mod))
 
 ## Bootstrapping the polynomial model
 ```{r}
-n_boot <- 100
+n_boot <- 1000
 for (n in 1:n_boot){
   new_data <- 
     release_lag %>%
@@ -452,8 +452,10 @@ test <- release_lag[test_idx, ] %>% as_tibble()
 ### Fitting the training data
 
 ```{r}
-locfit1 <- locfit(release_sum_n ~ lag_release + year + oil_kg_n + gdp, data = train)
+locfit1 <- locfit(release_sum_n ~ year + oil_kg_n + gdp, data = train)
 summary(locfit1)
+plot(train$year, train$release_sum_n, xlab="Year", ylab="Lead Concentration", main="Locfit")
+lines(locfit1)
 ```
 
 ```{r}
@@ -467,8 +469,8 @@ The predict function is used to obtain predictions using the testing dataset. Th
 
 
 ```{r}
-alpha_vals <- seq(0.1, 1, length.out=50) ##values to try
-gcv_2 <- gcvplot(release_sum_n ~ lag_release + year + oil_kg_n + gdp, data=release_lag, alpha=alpha_vals) %>%  
+alpha_vals <- seq(0.4, 1, length.out=50) ##values to try
+cross_val <- gcvplot(release_sum_n ~ year + oil_kg_n + gdp, data = release_lag, alpha=alpha_vals) %>%  
   summary() %>%   
   as_tibble() %>%
   mutate(alpha = alpha_vals)
@@ -477,16 +479,20 @@ The generalized cross-validation (GCV) score is a measure of smoothness. It is u
 
 ##` Plot the GCV score as a function of alpha
 ```{r}
-ggplot(gcv_2, aes(x=alpha, y=GCV)) +
+ggplot(cross_val, aes(x=alpha, y=GCV)) +
   geom_point()
 ```
 
 According to the cross validation, an alpha of 2 is optimal in our range and thus will produce the best locfit model.
+```{r}
+n_alpha <- cross_val[which.min(cross_val$GCV),3]
+n_alpha
+```
 
 ```{r}
-locfit2 <- locfit(release_sum_n ~ lag_release + year + oil_kg_n + gdp, data = train, alpha = 2)
+locfit2 <- locfit(release_sum_n ~ year + oil_kg_n + gdp, data = train, alpha = n_alpha)
 
-fit_pred2 <- predict(locfit2, newdata = test, alpha = 2)  ##prediction of already trained locfit model using new
+fit_pred2 <- predict(locfit2, newdata = test, alpha = n_alpha)  ##prediction of already trained locfit model using new
 
 test_df <- data.frame(release = test$release_sum_n, year = test$year, lag_release = test$lag_release, lf_pred = fit_pred2)
 
@@ -497,9 +503,9 @@ mse2
 ### Comparing to mse of polynomial model
 
 ```{r}
-poly_mod2 <- lm(release_sum_n ~ poly(lag_release, 3) + poly(year, 3) + poly(oil_kg_n, 3) + poly(gdp, 3), data = train)
+poly_mod2 <- lm(release_sum_n ~ poly(year, 3) + poly(oil_kg_n, 3) + poly(gdp, 3), data = train)
 fit_pred0 <- predict(poly_mod2, newdata = test) 
-mse_poly <- mean((test_df$release - fit_pred0)^2)         #difference between observed data in test and predicted data squared and then averaged.
+mse_poly <- mean((test_df$release - fit_pred0)^2)         #difference between observed data in test and predicted data squared and then averaged.f
 mse_poly
 ```
 
