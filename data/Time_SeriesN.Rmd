@@ -38,6 +38,8 @@ To provide further clarification, when we refer to the petroleum industry we mea
 
 We intend to relate this to the data on the production of crude oil in Texas, our logic being that it should be a good predictor as more petroleum manufacturing should happen when more petroleum has been extracted and vice versa. 
 
+Edit Vikas
+
 # Data Exploration
 
 This data set is vast and highly nuanced, in order to approach the analysis methodologically, we start by only considering the most simple variables. Our goal is to examine how the total chemical release varies both by location and by time, attempt to fit a model to this and then test the success.
