@@ -28,12 +28,13 @@ pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshap
 ```
 <<<<<<< HEAD
 # abbb-0jidfsiogf
-
+break 2 
 # baba loooooooo balay
 # abbb-0jidfsiogf
 =======
 this is going to break 
 # baba loooooooo balay
+where is the data
 >>>>>>> 10508ba87d7e3e6b92148b8ef0c48bffb5101e7d
 # What is the Data?
 
