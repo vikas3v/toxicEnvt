@@ -27,16 +27,7 @@ knitr::opts_chunk$set(
 if(!require(pacman)) install.packages('pacman')
 pacman::p_load(dplyr, locfit, ggplot2, mapproj, readr, ggthemes, viridis, reshape2, cowplot, gstat, sp, automap, data.table, lubridate, forecast, tseries, astsa, Kendall)
 ```
-<<<<<<< HEAD
-conflict2
-# What is the Data?
-conflict2
-=======
-Create conflict!!!
-# What is the Data?
-Create confliiiiiiiiicttt!!!
 
->>>>>>> 6e9d2bf1fb332da41363c3d31da88c049c2283fb
 
 Our data set contains information on the chemicals released by a range of industries from 1986 to 2016. While the data is extremely detailed we want to examine chemical release by the petroleum industry in Texas. We have data on the types of chemicals and the medium through which they are released but to begin with, we will examine the total chemical release. 
 
